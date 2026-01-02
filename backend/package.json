@@ -4,7 +4,8 @@
   "description": "Backend API for prompt library management",
   "main": "server.js",
   "scripts": {
-    "start": "node server-new.js",
+    "start": "npm run db:migrate:deploy && node server-new.js",
+    "build": "npm install && npx prisma generate",
     "dev": "nodemon server-new.js",
     "dev:legacy": "nodemon server.js",
     "db:generate": "prisma generate",
