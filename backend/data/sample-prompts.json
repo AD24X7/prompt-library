@@ -1,0 +1,106 @@
+[
+  {
+    "id": "strategic-decision-framework",
+    "title": "Strategic Decision Framework",
+    "description": "A comprehensive framework for making strategic business decisions with stakeholder analysis and risk assessment.",
+    "prompt": "I need to make a strategic decision about {decision_topic}. Please help me analyze this using the following framework:\n\n1. **Problem Definition**: Clearly define the decision we need to make and why it matters now.\n\n2. **Stakeholder Analysis**: \n   - Who are the key stakeholders affected by this decision?\n   - What are their interests and concerns?\n   - How will they be impacted?\n\n3. **Options Analysis**:\n   - What are 3-5 viable options we could pursue?\n   - For each option, outline:\n     * Expected outcomes\n     * Resource requirements\n     * Timeline\n     * Risk factors\n\n4. **Decision Criteria**:\n   - What are the most important factors for this decision?\n   - How should we weight strategic fit vs. financial impact vs. risk vs. timing?\n\n5. **Recommendation**:\n   - Which option do you recommend and why?\n   - What are the key next steps?\n   - How should we communicate this decision?\n\nContext: {additional_context}\nTimeline: {decision_timeline}\nConstraints: {known_constraints}",
+    "category": "Strategy & Vision",
+    "tags": ["decision-making", "strategy", "stakeholder-analysis", "framework"],
+    "difficulty": "medium",
+    "estimatedTime": "15-30 minutes",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z",
+    "usageCount": 25,
+    "rating": 4.8,
+    "reviews": [
+      {
+        "id": "review-1",
+        "rating": 5,
+        "comment": "Excellent framework for complex decisions. Helped me think through a major product pivot.",
+        "createdAt": "2024-01-15T10:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "stakeholder-communication-plan",
+    "title": "Stakeholder Communication Plan",
+    "description": "Template for creating comprehensive communication plans for project updates, changes, or announcements.",
+    "prompt": "Help me create a stakeholder communication plan for {project_or_initiative}.\n\n**Communication Objective**: {communication_goal}\n\n**Stakeholder Mapping**:\nFor each stakeholder group, analyze:\n1. **Primary Stakeholders** (high influence, high interest)\n2. **Secondary Stakeholders** (high influence, low interest OR low influence, high interest)\n3. **Monitors** (low influence, low interest but need to be informed)\n\n**For Each Stakeholder Group, Define**:\n- **What** they need to know (key messages)\n- **Why** it matters to them (WIIFM - What's In It For Me)\n- **When** they need to know it (timing)\n- **How** to communicate (channel/method)\n- **Who** will deliver the message\n- **Expected reaction** and how to handle concerns\n\n**Communication Timeline**:\n- Pre-announcement preparation\n- Primary announcement\n- Follow-up communications\n- Ongoing updates schedule\n\n**Success Metrics**:\nHow will we measure communication effectiveness?\n\n**Risk Mitigation**:\nWhat could go wrong with communication and how do we prevent it?\n\nContext: {situation_context}\nDeadlines: {key_dates}\nSensitive areas: {potential_concerns}",
+    "category": "Stakeholder Communication",
+    "tags": ["communication", "stakeholder-management", "planning", "change-management"],
+    "difficulty": "medium",
+    "estimatedTime": "10-15 minutes",
+    "createdAt": "2024-01-02T00:00:00.000Z",
+    "updatedAt": "2024-01-02T00:00:00.000Z",
+    "usageCount": 18,
+    "rating": 4.6,
+    "reviews": []
+  },
+  {
+    "id": "product-roadmap-prioritization",
+    "title": "Product Roadmap Prioritization",
+    "description": "Framework for prioritizing features and initiatives on product roadmap using multiple evaluation criteria.",
+    "prompt": "Help me prioritize items for our product roadmap for {product_name} targeting {target_timeframe}.\n\n**Current Backlog Items to Prioritize**:\n{list_of_features_or_initiatives}\n\n**Evaluation Framework**:\nFor each item, please score (1-5 scale) and provide rationale:\n\n1. **Strategic Alignment** (5 = perfect fit with company strategy)\n   - How well does this align with our strategic goals?\n   - Does it support our competitive positioning?\n\n2. **Customer Value** (5 = critical customer need)\n   - What customer problem does this solve?\n   - How many customers are affected?\n   - What's the severity of the pain point?\n\n3. **Business Impact** (5 = significant revenue/cost impact)\n   - Expected financial impact (revenue growth, cost savings)\n   - Market opportunity size\n   - Competitive advantage gained\n\n4. **Implementation Feasibility** (5 = easy to implement)\n   - Technical complexity and risk\n   - Resource requirements (engineering, design, etc.)\n   - Dependencies on other teams/systems\n\n5. **Time to Value** (5 = quick wins)\n   - How quickly can we deliver and see results?\n   - Can we break this into smaller deliverable chunks?\n\n**Constraints**:\n- Team capacity: {team_capacity}\n- Budget limitations: {budget_constraints}\n- Technical debt: {technical_limitations}\n- Market timing: {market_considerations}\n\n**Recommended Prioritization**:\nBased on weighted scores, provide:\n1. Top 3 immediate priorities (next quarter)\n2. Medium-term priorities (2-3 quarters)\n3. Future considerations (parking lot)\n\nInclude rationale for tough trade-off decisions.",
+    "category": "Product Planning",
+    "tags": ["prioritization", "roadmap", "product-management", "strategy"],
+    "difficulty": "hard",
+    "estimatedTime": "30+ minutes",
+    "createdAt": "2024-01-03T00:00:00.000Z",
+    "updatedAt": "2024-01-03T00:00:00.000Z",
+    "usageCount": 31,
+    "rating": 4.9,
+    "reviews": [
+      {
+        "id": "review-2",
+        "rating": 5,
+        "comment": "This framework transformed how we do roadmap planning. Much more objective now.",
+        "createdAt": "2024-01-20T14:15:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "team-performance-review",
+    "title": "Team Performance Review & Development",
+    "description": "Structured approach for conducting team performance reviews and creating development plans.",
+    "prompt": "Help me conduct a comprehensive performance review for {team_member_name} in the {role_title} position.\n\n**Performance Period**: {review_period}\n**Team/Department**: {team_context}\n\n**1. Goal Achievement Review**:\nFor each goal set in the previous period:\n- **Goal**: {specific_goal}\n- **Target**: {measurable_target}\n- **Actual Result**: {actual_outcome}\n- **Gap Analysis**: What factors contributed to over/under performance?\n- **Lessons Learned**: What would we do differently?\n\n**2. Core Competencies Assessment**:\nRate and provide examples for:\n- **Technical Skills**: Expertise relevant to role\n- **Leadership**: Influence, decision-making, vision\n- **Communication**: Clarity, stakeholder management, listening\n- **Problem Solving**: Analytical thinking, creativity, execution\n- **Collaboration**: Teamwork, cross-functional partnership\n- **Growth Mindset**: Learning agility, adaptability, feedback receptivity\n\n**3. Impact Analysis**:\n- **Key Achievements**: Top 3 accomplishments this period\n- **Business Impact**: How did their work drive results?\n- **Team Impact**: How did they contribute to team success?\n- **Cultural Impact**: How did they embody company values?\n\n**4. Development Areas**:\n- **Skill Gaps**: What capabilities need development?\n- **Behavioral Adjustments**: Any areas for improvement?\n- **Stretch Opportunities**: What challenges could accelerate growth?\n\n**5. Development Plan**:\n- **Short-term goals** (next 3 months)\n- **Medium-term objectives** (6-12 months)\n- **Skill development plan** (training, mentoring, projects)\n- **Support needed** from manager and organization\n\n**6. Career Progression**:\n- **Career aspirations**: Where does the person want to grow?\n- **Readiness assessment**: Are they ready for next level?\n- **Gap to promotion**: What's needed to advance?\n- **Timeline**: Realistic progression timeline\n\nAdditional context: {specific_situations_or_challenges}",
+    "category": "Team Management",
+    "tags": ["performance-review", "team-development", "career-planning", "leadership"],
+    "difficulty": "medium",
+    "estimatedTime": "15-30 minutes",
+    "createdAt": "2024-01-04T00:00:00.000Z",
+    "updatedAt": "2024-01-04T00:00:00.000Z",
+    "usageCount": 22,
+    "rating": 4.7,
+    "reviews": []
+  },
+  {
+    "id": "market-competitive-analysis",
+    "title": "Market & Competitive Analysis",
+    "description": "Framework for analyzing market landscape and competitive positioning for strategic planning.",
+    "prompt": "Conduct a comprehensive market and competitive analysis for {company_or_product} in the {industry_or_market} space.\n\n**Market Landscape Analysis**:\n\n1. **Market Size & Growth**:\n   - Total Addressable Market (TAM)\n   - Serviceable Addressable Market (SAM)\n   - Serviceable Obtainable Market (SOM)\n   - Market growth rate and trends\n   - Key market drivers and inhibitors\n\n2. **Customer Segmentation**:\n   - Primary customer segments\n   - Segment size and growth potential\n   - Key customer needs and pain points\n   - Buying behavior and decision criteria\n   - Price sensitivity analysis\n\n**Competitive Analysis**:\n\n3. **Direct Competitors**:\nFor each major competitor:\n   - **Company**: {competitor_name}\n   - **Market Position**: Market share, positioning\n   - **Value Proposition**: How they differentiate\n   - **Strengths**: What they do well\n   - **Weaknesses**: Where they fall short\n   - **Strategy**: Their apparent strategic direction\n   - **Recent Moves**: Product launches, partnerships, etc.\n\n4. **Indirect Competitors & Substitutes**:\n   - Alternative solutions customers might choose\n   - Emerging threats from adjacent markets\n   - Technology disruption risks\n\n**Strategic Positioning**:\n\n5. **Our Position**:\n   - Current market share and positioning\n   - Unique value proposition\n   - Competitive advantages (sustainable?)\n   - Areas where we lag competitors\n\n6. **Gap Analysis**:\n   - Unmet customer needs in the market\n   - White space opportunities\n   - Areas of competitive weakness we could exploit\n\n7. **Strategic Recommendations**:\n   - How should we position against competitors?\n   - What capabilities do we need to build/acquire?\n   - Where should we focus our investment?\n   - What partnerships or alliances make sense?\n\n**Market Context**: {specific_market_context}\n**Time Horizon**: {analysis_timeframe}\n**Geographic Scope**: {geographic_focus}",
+    "category": "Analysis & Research",
+    "tags": ["competitive-analysis", "market-research", "strategy", "positioning"],
+    "difficulty": "hard",
+    "estimatedTime": "30+ minutes",
+    "createdAt": "2024-01-05T00:00:00.000Z",
+    "updatedAt": "2024-01-05T00:00:00.000Z",
+    "usageCount": 15,
+    "rating": 4.5,
+    "reviews": []
+  },
+  {
+    "id": "change-management-plan",
+    "title": "Change Management Strategy",
+    "description": "Comprehensive framework for planning and executing organizational change initiatives.",
+    "prompt": "Help me develop a change management strategy for {change_initiative} affecting {affected_groups}.\n\n**Change Overview**:\n- **Current State**: {describe_current_situation}\n- **Future State**: {describe_desired_outcome}\n- **Change Rationale**: {why_change_is_needed}\n- **Timeline**: {expected_timeline}\n\n**Change Impact Analysis**:\n\n1. **Stakeholder Impact Assessment**:\n   For each affected group:\n   - **Group**: {stakeholder_group}\n   - **Impact Level**: High/Medium/Low\n   - **What Changes**: Day-to-day work, processes, tools, reporting\n   - **Resistance Risk**: Likely sources of resistance\n   - **Influence Level**: Their ability to help/hurt the initiative\n\n2. **Change Readiness Assessment**:\n   - **Organizational Culture**: How does culture support/resist change?\n   - **Previous Change History**: How have past changes gone?\n   - **Current State**: Are people overwhelmed or ready for change?\n   - **Leadership Support**: How committed is leadership?\n\n**Change Management Strategy**:\n\n3. **Communication Strategy**:\n   - **Key Messages**: What story do we need to tell?\n   - **Message Timing**: When do different groups hear what?\n   - **Communication Channels**: How will we reach each group?\n   - **Feedback Loops**: How will we gather input and concerns?\n\n4. **Training & Support Plan**:\n   - **Skill Gaps**: What new capabilities are needed?\n   - **Training Approach**: Formal training vs. on-the-job vs. peer support\n   - **Support Systems**: Help desk, super users, documentation\n   - **Performance Support**: Job aids, quick reference guides\n\n5. **Resistance Management**:\n   - **Anticipated Resistance**: What resistance do we expect and why?\n   - **Mitigation Strategies**: How will we address each type of resistance?\n   - **Coalition Building**: Who are our change champions?\n   - **Quick Wins**: What early successes can build momentum?\n\n6. **Success Metrics**:\n   - **Adoption Metrics**: How will we measure uptake?\n   - **Performance Metrics**: How will we know it's working?\n   - **Leading Indicators**: Early signals of success/trouble\n   - **Feedback Metrics**: Satisfaction, confidence, support levels\n\n**Implementation Plan**:\n- **Phase 1**: Preparation and awareness\n- **Phase 2**: Training and transition\n- **Phase 3**: Go-live and support\n- **Phase 4**: Reinforcement and optimization\n\nRisks and Mitigation: {known_risks_or_concerns}",
+    "category": "Strategy & Vision",
+    "tags": ["change-management", "organizational-development", "transformation", "leadership"],
+    "difficulty": "hard",
+    "estimatedTime": "30+ minutes",
+    "createdAt": "2024-01-06T00:00:00.000Z",
+    "updatedAt": "2024-01-06T00:00:00.000Z",
+    "usageCount": 12,
+    "rating": 4.4,
+    "reviews": []
+  }
+]

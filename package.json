@@ -1,0 +1,20 @@
+{
+  "name": "prompt-library",
+  "version": "1.0.0",
+  "description": "Local LLM prompt library for Director/PM roles",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:dev": "cd frontend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": ["llm", "prompts", "director", "pm", "management"],
+  "author": "Director/PM",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

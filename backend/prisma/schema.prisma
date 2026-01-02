@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  provider  String   @default("email") // email, google, microsoft
+  password  String? // nullable for OAuth users
+  verified  Boolean  @default(false)
+  verificationCode String?
+  verificationExpiry DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  prompts   Prompt[]
+  reviews   Review[]
+  activities UserActivity[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  prompts Prompt[]
+
+  @@map("categories")
+}
+
+model Prompt {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  prompt          String   @db.Text
+  category        String
+  tags            String[]
+  difficulty      String   @default("medium") // easy, medium, hard
+  estimatedTime   String   @default("5-10 minutes")
+  placeholders    String[]
+  rating          Float    @default(0)
+  usageCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  categoryObj Category @relation(fields: [category], references: [name])
+  author      User?    @relation(fields: [authorId], references: [id])
+  authorId    String?
+  reviews     Review[]
+
+  @@map("prompts")
+}
+
+model Review {
+  id                    String   @id @default(cuid())
+  rating                Int
+  comment               String?  @db.Text
+  toolUsed              String?
+  whatWorked            String?  @db.Text
+  whatDidntWork         String?  @db.Text
+  improvementSuggestions String? @db.Text
+  testRunGraphicsLink   String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  promptId String
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+
+  @@map("reviews")
+}
+
+model UserActivity {
+  id          String   @id @default(cuid())
+  action      String   // prompt_viewed, prompt_tested, prompt_created, review_added, etc.
+  details     Json?    // store additional metadata
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  @@map("user_activities")
+}
