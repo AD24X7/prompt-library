@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "src": "backend/server-new.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "backend/server-new.js"
+    }
+  ]
+}
