@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { Prompt, Category, Stats, Review } from '../types';
+import { Prompt, Category, Stats, Review, User, Comment } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -84,22 +84,36 @@ export const statsApi = {
 // Auth API
 export const authApi = {
   signUp: (data: { email: string; password: string; name: string }) =>
-    api.post<{ success: boolean; token: string; user: any }>('/auth/signup', data),
+    api.post<{ success: boolean; token: string; user: User }>('/auth/signup', data),
   
   signIn: (data: { email: string; password: string }) =>
-    api.post<{ success: boolean; token: string; user: any }>('/auth/signin', data),
+    api.post<{ success: boolean; token: string; user: User }>('/auth/signin', data),
   
   sendVerificationCode: (data: { email: string }) =>
     api.post<{ success: boolean; message: string }>('/auth/send-verification', data),
   
   verifyCode: (data: { email: string; code: string }) =>
-    api.post<{ success: boolean; token: string; user: any }>('/auth/verify-code', data),
+    api.post<{ success: boolean; token: string; user: User }>('/auth/verify-code', data),
   
   getMe: () =>
-    api.get<{ success: boolean; user: any }>('/auth/me'),
+    api.get<{ success: boolean; user: User }>('/auth/me'),
   
   refreshToken: () =>
     api.post<{ success: boolean; token: string }>('/auth/refresh')
+};
+
+export const commentsApi = {
+  getComments: (promptId: string) => 
+    api.get<Comment[]>(`/prompts/${promptId}/comments`),
+  
+  createComment: (promptId: string, data: { content: string; parentId?: string }) =>
+    api.post<Comment>(`/prompts/${promptId}/comments`, data),
+  
+  updateComment: (commentId: string, data: { content: string }) =>
+    api.put<Comment>(`/comments/${commentId}`, data),
+  
+  deleteComment: (commentId: string) =>
+    api.delete<{ success: boolean }>(`/comments/${commentId}`)
 };
 
 export default api;

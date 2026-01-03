@@ -33,7 +33,7 @@ export const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         const response = await statsApi.get();
-        setStats(response.data);
+        setStats((response.data || response) as unknown as Stats);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
       } finally {

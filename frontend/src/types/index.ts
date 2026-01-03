@@ -50,3 +50,28 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  id: string;
+  promptId: string;
+  userId: string;
+  content: string;
+  parentId: string | null;
+  user: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+  replies: Comment[];
+  createdAt: string;
+  updatedAt: string;
+}

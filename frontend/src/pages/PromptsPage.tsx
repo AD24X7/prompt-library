@@ -49,8 +49,8 @@ export const PromptsPage: React.FC = () => {
         promptsApi.getAll(),
         categoriesApi.getAll(),
       ]);
-      setPrompts(promptsResponse.data);
-      setCategories(categoriesResponse.data);
+      setPrompts(Array.isArray(promptsResponse.data) ? promptsResponse.data : (promptsResponse as unknown) as Prompt[]);
+      setCategories(Array.isArray(categoriesResponse.data) ? categoriesResponse.data : (categoriesResponse as unknown) as Category[]);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -66,7 +66,7 @@ export const PromptsPage: React.FC = () => {
         category: selectedCategory || undefined,
       };
       const response = await promptsApi.getAll(params);
-      setPrompts(response.data);
+      setPrompts(Array.isArray(response.data) ? response.data : (response as unknown) as Prompt[]);
     } catch (error) {
       console.error('Search failed:', error);
     } finally {

@@ -60,7 +60,7 @@ export const CreatePromptPage: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await categoriesApi.getAll();
-      setCategories(response.data);
+      setCategories(Array.isArray(response.data) ? response.data : (response as unknown) as Category[]);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }

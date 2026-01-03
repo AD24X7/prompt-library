@@ -1,0 +1,11 @@
+[
+  {
+    "id": "e00b0812-583f-4dc1-811d-2e6779cd314b",
+    "email": "test@example.com",
+    "name": "Test User",
+    "password": "$2b$10$InA1BzqsSUogU02tg7hl3uS8pjp4eSGZd2fqPGiMOQUof8xLGu79a",
+    "avatar": "https://ui-avatars.com/api/?name=Test%20User&background=1976d2&color=fff",
+    "createdAt": "2026-01-03T10:10:30.136Z",
+    "updatedAt": "2026-01-03T10:10:30.136Z"
+  }
+]

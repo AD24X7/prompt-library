@@ -41,8 +41,8 @@ export const CategoriesPage: React.FC = () => {
         categoriesApi.getAll(),
         promptsApi.getAll(),
       ]);
-      setCategories(categoriesResponse.data);
-      setPrompts(promptsResponse.data);
+      setCategories(Array.isArray(categoriesResponse.data) ? categoriesResponse.data : (categoriesResponse as unknown) as Category[]);
+      setPrompts(Array.isArray(promptsResponse.data) ? promptsResponse.data : (promptsResponse as unknown) as Prompt[]);
     } catch (error) {
       setError('Failed to fetch data');
       console.error('Failed to fetch data:', error);
@@ -63,7 +63,8 @@ export const CategoriesPage: React.FC = () => {
 
     try {
       const response = await categoriesApi.create(newCategory);
-      setCategories(prev => [...prev, response.data]);
+      const createdCategory = response.data || response;
+      setCategories(prev => [...prev, (createdCategory as unknown) as Category]);
       setCreateDialogOpen(false);
       setNewCategory({ name: '', description: '' });
       setError('');

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "2cdf7fde-cfe6-4bc8-9627-ca2c09cd0b18",
+    "promptId": "strategic-decision-framework",
+    "userId": "e00b0812-583f-4dc1-811d-2e6779cd314b",
+    "content": "This is a great framework!",
+    "parentId": null,
+    "createdAt": "2026-01-03T10:11:39.932Z",
+    "updatedAt": "2026-01-03T10:11:39.932Z"
+  },
+  {
+    "id": "03d1af5f-14de-4c16-89ce-97a5e37edb44",
+    "promptId": "strategic-decision-framework",
+    "userId": "e00b0812-583f-4dc1-811d-2e6779cd314b",
+    "content": "I agree! This helped me too.",
+    "parentId": "2cdf7fde-cfe6-4bc8-9627-ca2c09cd0b18",
+    "createdAt": "2026-01-03T10:12:39.114Z",
+    "updatedAt": "2026-01-03T10:12:39.114Z"
+  }
+]

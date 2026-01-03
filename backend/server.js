@@ -6,10 +6,13 @@ const compression = require('compression');
 const fs = require('fs-extra');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const DATA_DIR = path.join(__dirname, 'data');
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
 // Middleware
 app.use(helmet());
@@ -325,6 +328,315 @@ app.get('/api/stats', async (req, res) => {
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// Auth middleware
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const users = await readData('users.json');
+    const user = users.find(u => u.id === decoded.id);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+// Auth routes
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+    
+    const users = await readData('users.json');
+    
+    // Check if user already exists
+    if (users.find(u => u.email === email)) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const user = {
+      id: uuidv4(),
+      email,
+      name,
+      password: hashedPassword,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1976d2&color=fff`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    users.push(user);
+    await writeData('users.json', users);
+    
+    // Generate token
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    
+    res.status(201).json({
+      success: true,
+      token,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    const users = await readData('users.json');
+    const user = users.find(u => u.email === email);
+    
+    if (!user || !await bcrypt.compare(password, user.password)) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Generate token
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    
+    res.json({
+      success: true,
+      token,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Signin error:', error);
+    res.status(500).json({ error: 'Failed to sign in' });
+  }
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  const { password: _, ...userWithoutPassword } = req.user;
+  res.json({
+    success: true,
+    user: userWithoutPassword
+  });
+});
+
+// Comments routes
+app.get('/api/prompts/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comments = await readData('comments.json');
+    const users = await readData('users.json');
+    
+    const promptComments = comments.filter(c => c.promptId === id);
+    
+    // Build threaded comment structure
+    const commentMap = new Map();
+    const topLevelComments = [];
+    
+    // First pass: create comment objects with user info
+    promptComments.forEach(comment => {
+      const user = users.find(u => u.id === comment.userId);
+      const commentWithUser = {
+        ...comment,
+        user: user ? {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar
+        } : {
+          id: 'deleted',
+          name: 'Deleted User',
+          avatar: 'https://ui-avatars.com/api/?name=?&background=ccc&color=666'
+        },
+        replies: []
+      };
+      commentMap.set(comment.id, commentWithUser);
+    });
+    
+    // Second pass: build thread structure
+    commentMap.forEach(comment => {
+      if (comment.parentId) {
+        const parent = commentMap.get(comment.parentId);
+        if (parent) {
+          parent.replies.push(comment);
+        }
+      } else {
+        topLevelComments.push(comment);
+      }
+    });
+    
+    // Sort by creation date
+    const sortComments = (comments) => {
+      comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      comments.forEach(comment => {
+        if (comment.replies.length > 0) {
+          sortComments(comment.replies);
+        }
+      });
+    };
+    
+    sortComments(topLevelComments);
+    
+    res.json(topLevelComments);
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ error: 'Failed to fetch comments' });
+  }
+});
+
+app.post('/api/prompts/:id/comments', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, parentId } = req.body;
+    
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+    
+    // Verify prompt exists
+    const prompts = await readData('prompts.json');
+    if (!prompts.find(p => p.id === id)) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    // If parentId is provided, verify parent comment exists
+    if (parentId) {
+      const comments = await readData('comments.json');
+      const parentComment = comments.find(c => c.id === parentId && c.promptId === id);
+      if (!parentComment) {
+        return res.status(404).json({ error: 'Parent comment not found' });
+      }
+    }
+    
+    const comment = {
+      id: uuidv4(),
+      promptId: id,
+      userId: req.user.id,
+      content: content.trim(),
+      parentId: parentId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    const comments = await readData('comments.json');
+    comments.push(comment);
+    await writeData('comments.json', comments);
+    
+    // Return comment with user info
+    const commentWithUser = {
+      ...comment,
+      user: {
+        id: req.user.id,
+        name: req.user.name,
+        avatar: req.user.avatar
+      },
+      replies: []
+    };
+    
+    res.status(201).json(commentWithUser);
+  } catch (error) {
+    console.error('Create comment error:', error);
+    res.status(500).json({ error: 'Failed to create comment' });
+  }
+});
+
+app.put('/api/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const { content } = req.body;
+    
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+    
+    const comments = await readData('comments.json');
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    const comment = comments[commentIndex];
+    
+    // Only allow user to edit their own comment
+    if (comment.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to edit this comment' });
+    }
+    
+    comment.content = content.trim();
+    comment.updatedAt = new Date().toISOString();
+    
+    await writeData('comments.json', comments);
+    
+    res.json(comment);
+  } catch (error) {
+    console.error('Update comment error:', error);
+    res.status(500).json({ error: 'Failed to update comment' });
+  }
+});
+
+app.delete('/api/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    
+    const comments = await readData('comments.json');
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+    
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    const comment = comments[commentIndex];
+    
+    // Only allow user to delete their own comment
+    if (comment.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+    
+    // Delete comment and all its replies
+    const deleteCommentAndReplies = (commentId) => {
+      const toDelete = comments.filter(c => c.parentId === commentId);
+      toDelete.forEach(reply => deleteCommentAndReplies(reply.id));
+      
+      const index = comments.findIndex(c => c.id === commentId);
+      if (index !== -1) {
+        comments.splice(index, 1);
+      }
+    };
+    
+    deleteCommentAndReplies(commentId);
+    
+    await writeData('comments.json', comments);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ error: 'Failed to delete comment' });
   }
 });
 

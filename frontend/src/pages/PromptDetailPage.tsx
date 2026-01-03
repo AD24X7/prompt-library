@@ -37,6 +37,7 @@ import { Prompt } from '../types';
 import { formatPlaceholder, extractPlaceholders, replacePlaceholdersInPrompt } from '../utils/promptUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthDialog } from '../components/AuthDialog';
+import { Comments } from '../components/Comments';
 
 export const PromptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -79,14 +80,15 @@ export const PromptDetailPage: React.FC = () => {
   const fetchPrompt = async (promptId: string) => {
     try {
       const response = await promptsApi.getById(promptId);
-      setPrompt(response.data);
-      setCustomizedPrompt(response.data.prompt);
+      setPrompt((response.data || response) as unknown as Prompt);
+      const promptData = (response.data || response) as unknown as Prompt;
+      setCustomizedPrompt(promptData.prompt);
       
       // Auto-enable placeholders for recently created prompts (within 5 minutes)
-      const promptAge = Date.now() - new Date(response.data.createdAt).getTime();
+      const promptAge = Date.now() - new Date(promptData.createdAt).getTime();
       const isRecentlyCreated = promptAge < 5 * 60 * 1000; // 5 minutes
       
-      if (isRecentlyCreated && response.data.placeholders && response.data.placeholders.length > 0) {
+      if (isRecentlyCreated && promptData.placeholders && promptData.placeholders.length > 0) {
         setShowPlaceholders(true);
       }
     } catch (error) {
@@ -568,6 +570,11 @@ export const PromptDetailPage: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Comments Section */}
+      <Box sx={{ mt: 4 }}>
+        <Comments promptId={prompt?.id || ''} />
+      </Box>
 
       {/* Test Dialog */}
       <Dialog 

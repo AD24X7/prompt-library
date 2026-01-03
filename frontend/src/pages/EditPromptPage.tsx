@@ -65,7 +65,7 @@ export const EditPromptPage: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await categoriesApi.getAll();
-      setCategories(response.data);
+      setCategories(Array.isArray(response.data) ? response.data : (response as unknown) as Category[]);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }
@@ -77,7 +77,7 @@ export const EditPromptPage: React.FC = () => {
     try {
       setLoadingPrompt(true);
       const response = await promptsApi.getById(id);
-      const prompt: Prompt = response.data;
+      const prompt: Prompt = (response.data || response) as unknown as Prompt;
       
       setFormData({
         title: prompt.title,
