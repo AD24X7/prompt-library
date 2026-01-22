@@ -3,18 +3,18 @@
   "name": "prompt-library",
   "builds": [
     {
-      "src": "backend/server-supabase.js",
+      "src": "server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/server-supabase.js"
+      "dest": "server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "backend/server-supabase.js"
+      "dest": "server.js"
     }
   ]
 }

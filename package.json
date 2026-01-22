@@ -2,11 +2,10 @@
   "name": "prompt-library",
   "version": "1.0.0",
   "description": "AI Prompt Library for Directors & Product Managers",
-  "main": "server.js",
+  "main": "backend/server-supabase.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "npx prisma generate",
-    "postinstall": "npx prisma generate",
+    "start": "cd backend && node server-supabase.js",
+    "build": "cd backend && npm install",
     "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
     "backend:dev": "cd backend && npm run dev",
     "frontend:dev": "cd frontend && npm start"
@@ -15,7 +14,6 @@
   "author": "Director/PM",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^5.15.0",
     "@supabase/supabase-js": "^2.91.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
@@ -25,7 +23,6 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
-    "prisma": "^5.15.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
