@@ -1,20 +1,4 @@
 {
   "version": 2,
-  "name": "prompt-library",
-  "builds": [
-    {
-      "src": "server-minimal.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server-minimal.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "server-minimal.js"
-    }
-  ]
+  "name": "prompt-library"
 }
