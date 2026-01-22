@@ -12,8 +12,11 @@ export interface Prompt {
   usageCount: number;
   rating: number;
   reviews: Review[];
+  summary?: string; // Auto-generated one-line summary of user intent
   lastUsed?: string;
   placeholders?: string[];
+  apps?: string[]; // Apps/tools that work well with this prompt
+  urls?: string[]; // Relevant URLs/resources
 }
 
 export interface Review {
@@ -21,12 +24,17 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
-  toolUsed?: string;
+  updatedAt: string;
+  toolUsed: string; // Required now
+  promptEdits?: string; // New field for prompt modifications
   whatWorked?: string;
   whatDidntWork?: string;
   improvementSuggestions?: string;
   testRunGraphicsLink?: string;
   mediaFiles?: string[];
+  screenshots?: string[]; // Native screenshot support
+  parentReviewId?: string; // For threading follow-up reviews
+  followUpReviews?: Review[]; // Nested follow-up reviews for the same tool
 }
 
 export interface Category {

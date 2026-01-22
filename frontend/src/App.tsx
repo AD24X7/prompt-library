@@ -5,6 +5,7 @@ import { CssBaseline, Box } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { NavBar } from './components/NavBar';
 import { Dashboard } from './pages/Dashboard';
+import { ToolPerformancePage } from './pages/ToolPerformancePage';
 import { PromptsPage } from './pages/PromptsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { CreatePromptPage } from './pages/CreatePromptPage';
@@ -48,7 +49,9 @@ function App() {
             <NavBar />
             <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<ToolPerformancePage />} />
+                <Route path="/tools" element={<ToolPerformancePage />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/prompts" element={<PromptsPage />} />
                 <Route path="/prompts/:id" element={<PromptDetailPage />} />
                 <Route path="/prompts/:id/edit" element={<EditPromptPage />} />

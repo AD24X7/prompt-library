@@ -7,5 +7,23 @@
     "avatar": "https://ui-avatars.com/api/?name=Test%20User&background=1976d2&color=fff",
     "createdAt": "2026-01-03T10:10:30.136Z",
     "updatedAt": "2026-01-03T10:10:30.136Z"
+  },
+  {
+    "id": "b1101b80-875b-41ee-8ae3-c4ed84e4afac",
+    "email": "anvita.dekhane@uipath.com",
+    "name": "Anvita",
+    "password": "$2b$10$fttlTVprPIN5R/DMbt3ca.ROwgbWSIEG9efVXHu8T/Wv2Ir50dObu",
+    "avatar": "https://ui-avatars.com/api/?name=Anvita&background=1976d2&color=fff",
+    "createdAt": "2026-01-08T21:45:12.801Z",
+    "updatedAt": "2026-01-08T21:45:12.801Z"
+  },
+  {
+    "id": "7396a864-6edd-4da0-8979-887c1641aecc",
+    "email": "anvitaiitb@gmail.com",
+    "name": "Anvita Dekhane",
+    "password": "$2b$10$0nBXCinaQivne3Fvjpah7Odb36EFnpfZzdp0QoSIytCzFOlguZzZS",
+    "avatar": "https://ui-avatars.com/api/?name=Anvita%20Dekhane&background=1976d2&color=fff",
+    "createdAt": "2026-01-20T23:24:01.577Z",
+    "updatedAt": "2026-01-20T23:24:01.577Z"
   }
 ]

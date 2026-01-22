@@ -119,7 +119,10 @@ export const PromptsPage: React.FC = () => {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Prompt Library
+        🧪 Test Cases & Prompts
+      </Typography>
+      <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
+        Browse and manage prompts used for AI tool performance testing
       </Typography>
 
       {/* Search and Filter Controls */}
@@ -179,7 +182,7 @@ export const PromptsPage: React.FC = () => {
               variant="contained"
               onClick={() => navigate('/create')}
             >
-              New Prompt
+              ➕ Add Test Case
             </Button>
           </Grid>
         </Grid>
@@ -248,7 +251,7 @@ export const PromptsPage: React.FC = () => {
                   <Box display="flex" alignItems="center" gap={0.5}>
                     <UsageIcon fontSize="small" color="action" />
                     <Typography variant="body2" color="text.secondary">
-                      {prompt.usageCount} uses
+                      {prompt.reviews?.length || 0} reviews
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={0.5}>
@@ -258,6 +261,36 @@ export const PromptsPage: React.FC = () => {
                     </Typography>
                   </Box>
                 </Box>
+
+                {/* AI Tools Tested */}
+                {prompt.reviews && prompt.reviews.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      🤖 AI Tools Tested:
+                    </Typography>
+                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                      {Array.from(new Set(prompt.reviews.map(r => r.toolUsed))).slice(0, 3).map((tool) => (
+                        <Chip 
+                          key={tool}
+                          label={tool} 
+                          size="small" 
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem', height: 20 }}
+                        />
+                      ))}
+                      {new Set(prompt.reviews.map(r => r.toolUsed)).size > 3 && (
+                        <Chip 
+                          label={`+${new Set(prompt.reviews.map(r => r.toolUsed)).size - 3} more`}
+                          size="small" 
+                          color="primary"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem', height: 20 }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                )}
 
                 {prompt.tags.length > 0 && (
                   <Box display="flex" gap={0.5} flexWrap="wrap">

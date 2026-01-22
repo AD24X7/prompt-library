@@ -69,6 +69,86 @@ const writeData = async (filename, data) => {
   await fs.writeJson(path.join(DATA_DIR, filename), data, { spaces: 2 });
 };
 
+// Generate a concise summary of user intent from prompt content
+const generateSummary = (prompt) => {
+  if (!prompt || !prompt.prompt) return 'Generate AI response';
+  
+  const text = prompt.prompt.toLowerCase();
+  
+  // Define patterns to identify common intents
+  const intentPatterns = [
+    { pattern: /help me (analyze|review|assess|evaluate)/, intent: 'Analyze' },
+    { pattern: /create a? (plan|strategy|framework|roadmap)/, intent: 'Plan' },
+    { pattern: /write a? (email|message|letter|document|report)/, intent: 'Write' },
+    { pattern: /generate (ideas|suggestions|options|alternatives)/, intent: 'Brainstorm' },
+    { pattern: /make a? (decision|choice) about/, intent: 'Decide' },
+    { pattern: /compare (.*?) (and|vs|versus|with)/, intent: 'Compare' },
+    { pattern: /summarize|provide a summary/, intent: 'Summarize' },
+    { pattern: /explain|help me understand/, intent: 'Explain' },
+    { pattern: /research|investigate|find information/, intent: 'Research' },
+    { pattern: /optimize|improve|enhance/, intent: 'Optimize' },
+    { pattern: /solve|fix|resolve/, intent: 'Solve' },
+    { pattern: /design|create|build/, intent: 'Design' },
+    { pattern: /negotiate|discuss/, intent: 'Negotiate' },
+    { pattern: /present|pitch/, intent: 'Present' },
+    { pattern: /schedule|organize|manage/, intent: 'Organize' }
+  ];
+  
+  // Extract main subject/topic
+  const topicPatterns = [
+    { pattern: /(project|product|feature|initiative)/, topic: 'project' },
+    { pattern: /(team|staff|employee|people)/, topic: 'team' },
+    { pattern: /(strategy|strategic|vision)/, topic: 'strategy' },
+    { pattern: /(budget|financial|cost|revenue)/, topic: 'budget' },
+    { pattern: /(customer|client|user)/, topic: 'customer' },
+    { pattern: /(market|competition|competitor)/, topic: 'market' },
+    { pattern: /(process|workflow|procedure)/, topic: 'process' },
+    { pattern: /(stakeholder|partner)/, topic: 'stakeholders' },
+    { pattern: /(meeting|presentation|discussion)/, topic: 'meeting' },
+    { pattern: /(risk|problem|issue|challenge)/, topic: 'risks' }
+  ];
+  
+  // Find intent
+  let intent = 'Help with';
+  for (const { pattern, intent: matchedIntent } of intentPatterns) {
+    if (pattern.test(text)) {
+      intent = matchedIntent;
+      break;
+    }
+  }
+  
+  // Find topic
+  let topic = 'task';
+  for (const { pattern, topic: matchedTopic } of topicPatterns) {
+    if (pattern.test(text)) {
+      topic = matchedTopic;
+      break;
+    }
+  }
+  
+  // Use title or description as fallback context
+  if (topic === 'task' && prompt.title) {
+    const title = prompt.title.toLowerCase();
+    for (const { pattern, topic: matchedTopic } of topicPatterns) {
+      if (pattern.test(title)) {
+        topic = matchedTopic;
+        break;
+      }
+    }
+  }
+  
+  // Generate final summary
+  if (intent === 'Help with') {
+    // Fallback to extracting from title/description
+    if (prompt.title && prompt.title.length < 60) {
+      return prompt.title;
+    }
+    return `Guide ${topic} decisions and actions`;
+  }
+  
+  return `${intent} ${topic} systematically`;
+};
+
 // Routes
 
 // Get all prompts
@@ -101,7 +181,13 @@ app.get('/api/prompts', async (req, res) => {
       );
     }
     
-    res.json(filtered);
+    // Add summaries to all prompts
+    const enrichedPrompts = filtered.map(prompt => ({
+      ...prompt,
+      summary: prompt.summary || generateSummary(prompt)
+    }));
+    
+    res.json(enrichedPrompts);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch prompts' });
   }
@@ -117,7 +203,13 @@ app.get('/api/prompts/:id', async (req, res) => {
       return res.status(404).json({ error: 'Prompt not found' });
     }
     
-    res.json(prompt);
+    // Add summary to the prompt
+    const enrichedPrompt = {
+      ...prompt,
+      summary: prompt.summary || generateSummary(prompt)
+    };
+    
+    res.json(enrichedPrompt);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch prompt' });
   }
@@ -263,10 +355,26 @@ app.post('/api/prompts/:id/use', async (req, res) => {
 // Add review/rating
 app.post('/api/prompts/:id/review', async (req, res) => {
   try {
-    const { rating, comment, toolUsed, whatWorked, whatDidntWork, improvementSuggestions, testRunGraphicsLink, mediaFiles } = req.body;
+    const { 
+      rating, 
+      comment, 
+      toolUsed, 
+      promptEdits,
+      whatWorked, 
+      whatDidntWork, 
+      improvementSuggestions, 
+      testRunGraphicsLink, 
+      screenshots,
+      mediaFiles,
+      parentReviewId
+    } = req.body;
     
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+    
+    if (!toolUsed) {
+      return res.status(400).json({ error: 'Tool used is required' });
     }
     
     const prompts = await readData('prompts.json');
@@ -280,28 +388,71 @@ app.post('/api/prompts/:id/review', async (req, res) => {
       id: uuidv4(),
       rating,
       comment: comment || '',
-      toolUsed: toolUsed || undefined,
+      toolUsed,
+      promptEdits: promptEdits || undefined,
       whatWorked: whatWorked || undefined,
       whatDidntWork: whatDidntWork || undefined,
       improvementSuggestions: improvementSuggestions || undefined,
       testRunGraphicsLink: testRunGraphicsLink || undefined,
+      screenshots: screenshots || [],
       mediaFiles: mediaFiles || [],
-      createdAt: new Date().toISOString()
+      parentReviewId: parentReviewId || undefined,
+      followUpReviews: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     if (!prompts[index].reviews) {
       prompts[index].reviews = [];
     }
     
-    prompts[index].reviews.push(review);
+    // Handle follow-up reviews (threading)
+    if (parentReviewId) {
+      // Find the parent review and add this as a follow-up
+      const findAndAddFollowUp = (reviews) => {
+        for (let i = 0; i < reviews.length; i++) {
+          if (reviews[i].id === parentReviewId) {
+            if (!reviews[i].followUpReviews) {
+              reviews[i].followUpReviews = [];
+            }
+            reviews[i].followUpReviews.push(review);
+            return true;
+          }
+          // Recursively search in follow-ups
+          if (reviews[i].followUpReviews && findAndAddFollowUp(reviews[i].followUpReviews)) {
+            return true;
+          }
+        }
+        return false;
+      };
+      
+      if (!findAndAddFollowUp(prompts[index].reviews)) {
+        return res.status(404).json({ error: 'Parent review not found' });
+      }
+    } else {
+      // Add as top-level review
+      prompts[index].reviews.push(review);
+    }
     
-    // Calculate average rating
-    const avgRating = prompts[index].reviews.reduce((sum, r) => sum + r.rating, 0) / prompts[index].reviews.length;
+    // Calculate average rating (include all reviews including follow-ups)
+    const calculateAllRatings = (reviews) => {
+      let allRatings = [];
+      reviews.forEach(review => {
+        allRatings.push(review.rating);
+        if (review.followUpReviews) {
+          allRatings = allRatings.concat(calculateAllRatings(review.followUpReviews));
+        }
+      });
+      return allRatings;
+    };
+    
+    const allRatings = calculateAllRatings(prompts[index].reviews);
+    const avgRating = allRatings.length > 0 ? allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length : 0;
     prompts[index].rating = Math.round(avgRating * 10) / 10;
     
     await writeData('prompts.json', prompts);
     
-    res.status(201).json(review);
+    res.status(201).json({ data: review });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add review' });
   }

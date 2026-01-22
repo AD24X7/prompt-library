@@ -32,6 +32,8 @@ interface FormData {
   tags: string[];
   difficulty: 'easy' | 'medium' | 'hard';
   estimatedTime: string;
+  apps: string[];
+  urls: string[];
 }
 
 export const CreatePromptPage: React.FC = () => {
@@ -43,6 +45,8 @@ export const CreatePromptPage: React.FC = () => {
   const [tagInput, setTagInput] = useState('');
   const [detectedPlaceholders, setDetectedPlaceholders] = useState<string[]>([]);
   const [promptErrors, setPromptErrors] = useState<string[]>([]);
+  const [appInput, setAppInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -51,6 +55,8 @@ export const CreatePromptPage: React.FC = () => {
     tags: [],
     difficulty: 'medium',
     estimatedTime: '5-10 minutes',
+    apps: [],
+    urls: [],
   });
 
   useEffect(() => {
@@ -108,6 +114,48 @@ export const CreatePromptPage: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove),
+    }));
+  };
+
+  const handleAddApp = () => {
+    const trimmedApp = appInput.trim();
+    if (trimmedApp && !formData.apps.includes(trimmedApp)) {
+      setFormData(prev => ({
+        ...prev,
+        apps: [...prev.apps, trimmedApp],
+      }));
+      setAppInput('');
+    }
+  };
+
+  const handleRemoveApp = (appToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      apps: prev.apps.filter(app => app !== appToRemove),
+    }));
+  };
+
+  const handleAddUrl = () => {
+    const trimmedUrl = urlInput.trim();
+    if (trimmedUrl && !formData.urls.includes(trimmedUrl)) {
+      // Basic URL validation
+      try {
+        new URL(trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`);
+        setFormData(prev => ({
+          ...prev,
+          urls: [...prev.urls, trimmedUrl.startsWith('http') ? trimmedUrl : `https://${trimmedUrl}`],
+        }));
+        setUrlInput('');
+      } catch (e) {
+        setError('Please enter a valid URL');
+      }
+    }
+  };
+
+  const handleRemoveUrl = (urlToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      urls: prev.urls.filter(url => url !== urlToRemove),
     }));
   };
 
@@ -351,6 +399,93 @@ export const CreatePromptPage: React.FC = () => {
                     onDelete={() => handleRemoveTag(tag)}
                     size="small"
                     variant="outlined"
+                  />
+                ))}
+              </Box>
+            </Grid>
+          )}
+
+          {/* Apps/Tools Section */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="h6" gutterBottom>
+              📱 Recommended Apps/Tools
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Suggest apps or tools that work well with this prompt
+            </Typography>
+            <Box display="flex" gap={1} sx={{ mb: 1 }}>
+              <TextField
+                fullWidth
+                label="Add App/Tool"
+                value={appInput}
+                onChange={(e) => setAppInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddApp()}
+                placeholder="e.g., ChatGPT, Claude, Notion"
+                size="small"
+              />
+              <Button variant="outlined" onClick={handleAddApp} disabled={!appInput.trim()}>
+                Add
+              </Button>
+            </Box>
+          </Grid>
+
+          {formData.apps.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {formData.apps.map((app, index) => (
+                  <Chip
+                    key={index}
+                    label={app}
+                    onDelete={() => handleRemoveApp(app)}
+                    size="small"
+                    variant="filled"
+                    color="secondary"
+                  />
+                ))}
+              </Box>
+            </Grid>
+          )}
+
+          {/* URLs/Resources Section */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="h6" gutterBottom>
+              🔗 Related Resources
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Add helpful URLs or resources related to this prompt
+            </Typography>
+            <Box display="flex" gap={1} sx={{ mb: 1 }}>
+              <TextField
+                fullWidth
+                label="Add URL"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddUrl()}
+                placeholder="https://example.com"
+                size="small"
+                type="url"
+              />
+              <Button variant="outlined" onClick={handleAddUrl} disabled={!urlInput.trim()}>
+                Add
+              </Button>
+            </Box>
+          </Grid>
+
+          {formData.urls.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {formData.urls.map((url, index) => (
+                  <Chip
+                    key={index}
+                    label={url}
+                    onDelete={() => handleRemoveUrl(url)}
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                    component="a"
+                    href={url}
+                    target="_blank"
+                    clickable
                   />
                 ))}
               </Box>

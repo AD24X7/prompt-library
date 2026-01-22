@@ -61,12 +61,15 @@ export const promptsApi = {
   addReview: (id: string, review: { 
     rating: number; 
     comment?: string; 
-    toolUsed?: string; 
+    toolUsed: string; 
+    promptEdits?: string;
     whatWorked?: string; 
     whatDidntWork?: string; 
     improvementSuggestions?: string; 
     testRunGraphicsLink?: string;
-    mediaFiles?: string[] 
+    screenshots?: string[];
+    mediaFiles?: string[];
+    parentReviewId?: string;
   }) =>
     api.post<{ data: Review }>(`/prompts/${id}/review`, review),
 };

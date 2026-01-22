@@ -1,14 +1,32 @@
 {
+  "version": 2,
+  "name": "prompt-library",
   "builds": [
     {
-      "src": "backend/server-new.js",
+      "src": "backend/server-supabase.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "backend/server-supabase.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "backend/server-new.js"
+      "dest": "backend/server-supabase.js"
     }
-  ]
+  ],
+  "env": {
+    "SUPABASE_URL": "@supabase-url",
+    "SUPABASE_ANON_KEY": "@supabase-anon-key", 
+    "SUPABASE_SERVICE_KEY": "@supabase-service-key",
+    "JWT_SECRET": "@jwt-secret",
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "backend/server-supabase.js": {
+      "maxDuration": 30
+    }
+  }
 }

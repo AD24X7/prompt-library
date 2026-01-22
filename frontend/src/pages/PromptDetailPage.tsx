@@ -9,9 +9,6 @@ import {
   Rating,
   TextField,
   Grid,
-  Divider,
-  Card,
-  CardContent,
   IconButton,
   Alert,
   Dialog,
@@ -30,14 +27,13 @@ import {
   TrendingUp as UsageIcon,
   ArrowBack as BackIcon,
   PlayArrow as TestIcon,
-  Share as ShareIcon,
 } from '@mui/icons-material';
-import { promptsApi } from '../utils/api';
-import { Prompt } from '../types';
+import { promptsApi, commentsApi } from '../utils/api';
+import { Prompt, Review, Comment } from '../types';
 import { formatPlaceholder, extractPlaceholders, replacePlaceholdersInPrompt } from '../utils/promptUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthDialog } from '../components/AuthDialog';
-import { Comments } from '../components/Comments';
+import { UnifiedReviewSystem } from '../components/UnifiedReviewSystem';
 
 export const PromptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -60,12 +56,35 @@ export const PromptDetailPage: React.FC = () => {
   const [showPlaceholders, setShowPlaceholders] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<'delete' | 'review' | 'edit' | null>(null);
+  const [promptExpanded, setPromptExpanded] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) {
       fetchPrompt(id);
+      fetchComments();
     }
   }, [id]);
+
+  const fetchComments = async () => {
+    if (!id) return;
+    try {
+      const response = await commentsApi.getComments(id);
+      setComments((response.data || response) as unknown as Comment[]);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+      // Comments are less critical, so no retry needed
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (id) {
+      // Small delay to avoid racing with server restarts
+      await new Promise(resolve => setTimeout(resolve, 500));
+      fetchPrompt(id);
+      fetchComments();
+    }
+  };
 
   // Set up test inputs when test dialog opens AND placeholders are enabled
   useEffect(() => {
@@ -77,12 +96,13 @@ export const PromptDetailPage: React.FC = () => {
     }
   }, [testDialogOpen, prompt, showPlaceholders]);
 
-  const fetchPrompt = async (promptId: string) => {
+  const fetchPrompt = async (promptId: string, retryCount = 0) => {
     try {
       const response = await promptsApi.getById(promptId);
       setPrompt((response.data || response) as unknown as Prompt);
       const promptData = (response.data || response) as unknown as Prompt;
       setCustomizedPrompt(promptData.prompt);
+      setError(''); // Clear any previous errors
       
       // Auto-enable placeholders for recently created prompts (within 5 minutes)
       const promptAge = Date.now() - new Date(promptData.createdAt).getTime();
@@ -92,10 +112,22 @@ export const PromptDetailPage: React.FC = () => {
         setShowPlaceholders(true);
       }
     } catch (error) {
-      setError('Failed to load prompt');
-      console.error('Failed to fetch prompt:', error);
+      console.error(`Failed to fetch prompt (attempt ${retryCount + 1}):`, error);
+      
+      // Retry up to 3 times with increasing delay
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.log(`Retrying in ${delay}ms...`);
+        setTimeout(() => {
+          fetchPrompt(promptId, retryCount + 1);
+        }, delay);
+      } else {
+        setError('Failed to load prompt. Please refresh the page.');
+      }
     } finally {
-      setLoading(false);
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 
@@ -218,33 +250,28 @@ export const PromptDetailPage: React.FC = () => {
     setReviewDialogOpen(true);
   };
 
-  const handleAddReview = async () => {
-    if (!prompt || !newRating) return;
+  const handleAddReview = async (reviewData: Partial<Review>) => {
+    if (!prompt) return;
 
     try {
       await promptsApi.addReview(prompt.id, {
-        rating: newRating,
-        comment: newComment,
-        toolUsed: toolUsed || undefined,
-        whatWorked: whatWorked || undefined,
-        whatDidntWork: whatDidntWork || undefined,
-        improvementSuggestions: improvementSuggestions || undefined,
-        testRunGraphicsLink: testRunGraphicsLink || undefined,
+        rating: reviewData.rating!,
+        comment: reviewData.comment || '',
+        toolUsed: reviewData.toolUsed!,
+        promptEdits: reviewData.promptEdits,
+        whatWorked: reviewData.whatWorked,
+        whatDidntWork: reviewData.whatDidntWork,
+        improvementSuggestions: reviewData.improvementSuggestions,
+        screenshots: reviewData.screenshots,
       });
       
       // Refresh prompt data to show new review
       await fetchPrompt(prompt.id);
-      setReviewDialogOpen(false);
-      setNewRating(null);
-      setNewComment('');
-      setToolUsed('');
-      setWhatWorked('');
-      setWhatDidntWork('');
-      setImprovementSuggestions('');
     } catch (error) {
       console.error('Failed to add review:', error);
     }
   };
+
 
   // Remove old handleDelete function - using handleDeletePrompt instead
 
@@ -326,26 +353,105 @@ export const PromptDetailPage: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        {/* Main Content */}
+        {/* Main Content - Reviews First */}
         <Grid size={{ xs: 12, md: 8 }}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Description
+          {/* Unified Reviews & Comments System */}
+          <UnifiedReviewSystem
+            prompt={prompt}
+            comments={comments}
+            onRefresh={handleRefresh}
+          />
+          {/* Prompt Details - Secondary with Collapsible Prompt */}
+          <Paper sx={{ p: 3, mt: 4 }}>
+            <Typography variant="h5" gutterBottom>
+              Prompt Details
             </Typography>
             <Typography variant="body1" sx={{ mb: 3 }}>
               {prompt.description || 'No description provided.'}
             </Typography>
 
-            <Typography variant="h6" gutterBottom>
-              Prompt
-            </Typography>
-            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
-              <Typography variant="body1" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                {prompt.prompt}
-              </Typography>
-            </Paper>
+            {/* Tags Display */}
+            {prompt.tags && prompt.tags.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Tags
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  {prompt.tags.map((tag, index) => (
+                    <Chip 
+                      key={index} 
+                      label={tag} 
+                      variant="outlined" 
+                      size="medium"
+                      sx={{ 
+                        bgcolor: 'primary.50',
+                        borderColor: 'primary.200',
+                        '&:hover': { bgcolor: 'primary.100' }
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
 
-            <Box display="flex" justifyContent="flex-end" gap={1} sx={{ mt: 2 }}>
+            {/* Collapsible Prompt Text */}
+            <Box sx={{ mb: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="h6">
+                  Prompt Text
+                </Typography>
+                <Button
+                  onClick={() => setPromptExpanded(!promptExpanded)}
+                  size="small"
+                  variant="text"
+                >
+                  {promptExpanded ? 'Collapse' : 'Expand'}
+                </Button>
+              </Box>
+              
+              <Paper variant="outlined" sx={{ bgcolor: 'grey.50' }}>
+                <Box sx={{ p: 2 }}>
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      fontFamily: 'monospace', 
+                      whiteSpace: 'pre-wrap',
+                      maxHeight: promptExpanded ? 'none' : 150,
+                      overflow: 'hidden',
+                      position: 'relative',
+                      ...(!promptExpanded && {
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 50,
+                          background: 'linear-gradient(transparent, rgba(245, 245, 245, 1))',
+                          pointerEvents: 'none',
+                        }
+                      })
+                    }}
+                  >
+                    {prompt.prompt}
+                  </Typography>
+                </Box>
+                {!promptExpanded && (
+                  <Box sx={{ p: 1, bgcolor: 'grey.100', textAlign: 'center' }}>
+                    <Button
+                      onClick={() => setPromptExpanded(true)}
+                      size="small"
+                      variant="text"
+                      color="primary"
+                    >
+                      Click to expand full prompt
+                    </Button>
+                  </Box>
+                )}
+              </Paper>
+            </Box>
+
+            <Box display="flex" justifyContent="flex-end" gap={1}>
               <Button
                 variant="outlined"
                 startIcon={<CopyIcon />}
@@ -364,139 +470,13 @@ export const PromptDetailPage: React.FC = () => {
               </Button>
             </Box>
           </Paper>
-
-          {/* Reviews */}
-          <Paper sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="h6">
-                Reviews ({prompt.reviews?.length || 0})
-              </Typography>
-              <Button 
-                variant="outlined" 
-                size="small"
-                onClick={handleReviewPrompt}
-              >
-                Add Review
-              </Button>
-            </Box>
-            
-            {prompt.reviews && prompt.reviews.length > 0 ? (
-              prompt.reviews.map((review) => (
-                <Card key={review.id} sx={{ mb: 3 }} variant="outlined">
-                  <CardContent>
-                    {/* Review Header */}
-                    <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Rating value={review.rating} readOnly size="small" />
-                        <Typography variant="body2" color="text.secondary">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      {review.toolUsed && (
-                        <Chip 
-                          label={review.toolUsed} 
-                          size="small" 
-                          color="secondary" 
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-
-                    {/* General Comment */}
-                    {review.comment && (
-                      <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>
-                        "{review.comment}"
-                      </Typography>
-                    )}
-
-                    {/* Detailed Sections */}
-                    <Grid container spacing={2}>
-                      {review.whatWorked && (
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <Box sx={{ p: 2, bgcolor: 'success.50', borderRadius: 1, border: '1px solid', borderColor: 'success.200' }}>
-                            <Typography variant="subtitle2" color="success.700" gutterBottom>
-                              ✅ What Worked
-                            </Typography>
-                            <Typography variant="body2" color="success.800">
-                              {review.whatWorked}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      )}
-
-                      {review.whatDidntWork && (
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <Box sx={{ p: 2, bgcolor: 'warning.50', borderRadius: 1, border: '1px solid', borderColor: 'warning.200' }}>
-                            <Typography variant="subtitle2" color="warning.700" gutterBottom>
-                              ⚠️ What Didn't Work
-                            </Typography>
-                            <Typography variant="body2" color="warning.800">
-                              {review.whatDidntWork}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      )}
-
-                      {review.improvementSuggestions && (
-                        <Grid size={{ xs: 12 }}>
-                          <Box sx={{ p: 2, bgcolor: 'info.50', borderRadius: 1, border: '1px solid', borderColor: 'info.200' }}>
-                            <Typography variant="subtitle2" color="info.700" gutterBottom>
-                              💡 Improvement Suggestions
-                            </Typography>
-                            <Typography variant="body2" color="info.800">
-                              {review.improvementSuggestions}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      )}
-                      {review.testRunGraphicsLink && (
-                        <Grid size={{ xs: 12 }}>
-                          <Box sx={{ p: 2, bgcolor: 'purple.50', borderRadius: 1, border: '1px solid', borderColor: 'purple.200' }}>
-                            <Typography variant="subtitle2" color="purple.700" gutterBottom>
-                              📸 Test Run Graphics
-                            </Typography>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              href={review.testRunGraphicsLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              sx={{ color: 'purple.700', borderColor: 'purple.300' }}
-                            >
-                              View Screenshots/Videos
-                            </Button>
-                          </Box>
-                        </Grid>
-                      )}
-                    </Grid>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Box textAlign="center" py={4}>
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  No reviews yet
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Be the first to test and review this prompt!
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  size="small"
-                  onClick={handleReviewPrompt}
-                >
-                  Add First Review
-                </Button>
-              </Box>
-            )}
-          </Paper>
         </Grid>
 
-        {/* Sidebar */}
+        {/* Enhanced Sidebar */}
         <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Details
+              Prompt Details
             </Typography>
             
             <Box sx={{ mb: 2 }}>
@@ -537,20 +517,80 @@ export const PromptDetailPage: React.FC = () => {
                 Used {prompt.usageCount} times
               </Typography>
             </Box>
-
-            {prompt.tags && prompt.tags.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Tags
-                </Typography>
-                <Box display="flex" gap={0.5} flexWrap="wrap">
-                  {prompt.tags.map((tag, index) => (
-                    <Chip key={index} label={tag} size="small" variant="outlined" />
-                  ))}
-                </Box>
-              </Box>
-            )}
           </Paper>
+
+          {/* Apps/Tools Section */}
+          {prompt.apps && prompt.apps.length > 0 && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                📱 Recommended Apps/Tools
+              </Typography>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {prompt.apps.map((app, index) => (
+                  <Chip 
+                    key={index} 
+                    label={app} 
+                    variant="filled"
+                    color="secondary"
+                    size="small"
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+              </Box>
+            </Paper>
+          )}
+
+          {/* URLs/Resources Section */}
+          {prompt.urls && prompt.urls.length > 0 && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                🔗 Related Resources
+              </Typography>
+              <Box>
+                {prompt.urls.map((url, index) => (
+                  <Box key={index} sx={{ mb: 1 }}>
+                    <Button
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      sx={{ 
+                        justifyContent: 'flex-start',
+                        textTransform: 'none',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {url}
+                    </Button>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
+          )}
+
+          {/* Tags Section (moved from main content) */}
+          {prompt.tags && prompt.tags.length > 0 && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                🏷️ Tags
+              </Typography>
+              <Box display="flex" gap={0.5} flexWrap="wrap">
+                {prompt.tags.map((tag, index) => (
+                  <Chip 
+                    key={index} 
+                    label={tag} 
+                    size="small" 
+                    variant="outlined"
+                    color="primary"
+                    sx={{ mb: 0.5 }}
+                  />
+                ))}
+              </Box>
+            </Paper>
+          )}
 
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -571,10 +611,6 @@ export const PromptDetailPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Comments Section */}
-      <Box sx={{ mt: 4 }}>
-        <Comments promptId={prompt?.id || ''} />
-      </Box>
 
       {/* Test Dialog */}
       <Dialog 
@@ -789,7 +825,15 @@ export const PromptDetailPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setReviewDialogOpen(false)}>Cancel</Button>
           <Button 
-            onClick={handleAddReview}
+            onClick={() => handleAddReview({
+              rating: newRating!,
+              comment: newComment,
+              toolUsed: toolUsed,
+              promptEdits: '',
+              whatWorked: whatWorked,
+              whatDidntWork: whatDidntWork,
+              improvementSuggestions: improvementSuggestions,
+            })}
             variant="contained"
             disabled={!newRating}
             size="large"

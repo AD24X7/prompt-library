@@ -10,11 +10,11 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  Home as HomeIcon,
-  Add as AddIcon,
+  Assessment as AssessmentIcon,
   MenuBook as LibraryIcon,
   Category as CategoryIcon,
-  Psychology as PsychologyIcon,
+  Dashboard as DashboardIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { UserMenu } from './UserMenu';
 
@@ -23,22 +23,22 @@ export const NavBar: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: <HomeIcon /> },
-    { path: '/prompts', label: 'Prompts', icon: <LibraryIcon /> },
+    { path: '/', label: 'Tool Performance', icon: <SpeedIcon /> },
+    { path: '/prompts', label: 'Test Cases', icon: <LibraryIcon /> },
+    { path: '/dashboard', label: 'Analytics', icon: <DashboardIcon /> },
     { path: '/categories', label: 'Categories', icon: <CategoryIcon /> },
-    { path: '/create', label: 'Create', icon: <AddIcon /> },
   ];
 
   return (
     <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
       <Toolbar>
         <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <PsychologyIcon sx={{ mr: 2 }} />
+          <AssessmentIcon sx={{ mr: 2 }} />
           <Typography variant="h6" noWrap component="div">
-            Prompt Library
+            AI Tool Analyzer
           </Typography>
           <Typography variant="subtitle2" sx={{ ml: 1, opacity: 0.8 }}>
-            for Directors & PMs
+            Performance Insights
           </Typography>
         </Box>
         

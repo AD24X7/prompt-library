@@ -1,0 +1,18 @@
+{
+  "description": "Additional dependencies needed for Supabase integration",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.5",
+    "@supabase/auth-helpers-nextjs": "^0.8.7",
+    "@supabase/auth-helpers-react": "^0.4.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5"
+  },
+  "scripts": {
+    "migrate": "cd database && node migration.js",
+    "db:setup": "echo 'Please run the schema.sql in your Supabase dashboard SQL editor'",
+    "db:migrate": "node database/migration.js"
+  },
+  "installation_command": "npm install @supabase/supabase-js @supabase/auth-helpers-nextjs @supabase/auth-helpers-react dotenv"
+}
