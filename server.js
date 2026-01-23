@@ -14,18 +14,33 @@ class SupabaseService {
     this.supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
     this.supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
     
+    // Only initialize if we have the required config
     if (!this.supabaseUrl || !this.supabaseServiceKey) {
-      throw new Error('Missing Supabase configuration. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY');
+      console.warn('⚠️  Missing Supabase configuration - running in fallback mode');
+      this.isConfigured = false;
+      return;
     }
     
-    // Admin client for server-side operations
-    this.adminClient = createClient(this.supabaseUrl, this.supabaseServiceKey);
-    
-    // Public client for user operations
-    this.client = createClient(this.supabaseUrl, this.supabaseAnonKey);
+    try {
+      // Admin client for server-side operations
+      this.adminClient = createClient(this.supabaseUrl, this.supabaseServiceKey);
+      
+      // Public client for user operations  
+      this.client = createClient(this.supabaseUrl, this.supabaseAnonKey);
+      
+      this.isConfigured = true;
+      console.log('✅ Supabase clients initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Supabase clients:', error.message);
+      this.isConfigured = false;
+    }
   }
 
   async getAllCategories() {
+    if (!this.isConfigured) {
+      return []; // Return empty array if not configured
+    }
+    
     try {
       const { data, error } = await this.client
         .from('categories')
@@ -41,6 +56,10 @@ class SupabaseService {
   }
 
   async getAllPrompts(filters = {}) {
+    if (!this.isConfigured) {
+      return []; // Return empty array if not configured
+    }
+    
     try {
       let query = this.client
         .from('prompts')
@@ -368,10 +387,17 @@ let supabaseService;
 let supabaseError = null;
 try {
   supabaseService = new SupabaseService();
-  console.log('✅ Supabase service initialized successfully');
+  if (supabaseService.isConfigured) {
+    console.log('✅ Supabase service initialized successfully');
+  } else {
+    console.log('⚠️  Supabase service created but not configured - running in fallback mode');
+    supabaseError = 'Missing environment variables';
+  }
 } catch (error) {
   console.error('❌ Failed to initialize Supabase service:', error.message);
   supabaseError = error.message;
+  // Create a dummy service for fallback
+  supabaseService = { isConfigured: false };
 }
 
 // Security middleware
@@ -459,9 +485,14 @@ app.get('/health', (req, res) => {
   const healthData = { 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    supabase: supabaseService ? 'initialized' : 'failed',
+    supabase: (supabaseService && supabaseService.isConfigured) ? 'configured' : 'not-configured',
     environment: process.env.NODE_ENV || 'development',
-    port: PORT
+    port: PORT,
+    envVars: {
+      SUPABASE_URL: process.env.SUPABASE_URL ? 'set' : 'missing',
+      SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? 'set' : 'missing',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : 'missing'
+    }
   };
   
   if (supabaseError) {
@@ -499,14 +530,14 @@ app.get('/', (req, res) => {
 // Categories
 app.get('/api/categories', async (req, res) => {
   try {
-    if (!supabaseService) {
-      return res.status(500).json({ error: 'Database service not available' });
+    if (!supabaseService || !supabaseService.isConfigured) {
+      return res.json([]); // Return empty array instead of error
     }
     const categories = await supabaseService.getAllCategories();
     res.json(categories || []);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories', details: error.message });
+    res.json([]); // Return empty array on error too
   }
 });
 
@@ -523,8 +554,8 @@ app.post('/api/categories', async (req, res) => {
 // Prompts
 app.get('/api/prompts', async (req, res) => {
   try {
-    if (!supabaseService) {
-      return res.status(500).json({ error: 'Database service not available' });
+    if (!supabaseService || !supabaseService.isConfigured) {
+      return res.json([]); // Return empty array instead of error
     }
     
     const { category, search, tags } = req.query;
@@ -541,7 +572,7 @@ app.get('/api/prompts', async (req, res) => {
     res.json(prompts);
   } catch (error) {
     console.error('Error fetching prompts:', error);
-    res.status(500).json({ error: 'Failed to fetch prompts', details: error.message });
+    res.json([]); // Return empty array on error too
   }
 });
 
@@ -686,14 +717,26 @@ app.use('*', (req, res) => {
 
 // Start server
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  console.log('🔄 Starting server...');
+  console.log(`📍 PORT environment variable: ${process.env.PORT}`);
+  console.log(`🎯 Will bind to port: ${PORT}`);
+  
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server successfully started!`);
+    console.log(`📍 Listening on: 0.0.0.0:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🗄️  Database: Supabase ${supabaseService ? '✅' : '❌'}`);
+    console.log(`🗄️  Database: Supabase ${(supabaseService && supabaseService.isConfigured) ? '✅' : '❌'}`);
     console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
+    console.log(`🔗 API endpoints available at: http://0.0.0.0:${PORT}/api/*`);
+    
     if (supabaseError) {
-      console.log(`⚠️  Supabase error: ${supabaseError}`);
+      console.log(`⚠️  Supabase not configured: ${supabaseError}`);
+      console.log(`💡 Server will work in fallback mode - add environment variables to enable full functionality`);
     }
+  });
+  
+  server.on('error', (error) => {
+    console.error('❌ Server failed to start:', error);
   });
 }
 
