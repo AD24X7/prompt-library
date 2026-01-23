@@ -6,20 +6,15 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY backend/package*.json ./backend/
 
 # Install dependencies
 RUN npm install
-RUN cd backend && npm install
 
 # Copy source code
 COPY . .
 
-# Generate Prisma client
-RUN cd backend && npx prisma generate
-
-# Expose port
-EXPOSE 5000
+# Expose port (Railway will set PORT env var)
+EXPOSE $PORT
 
 # Start the application
 CMD ["npm", "start"]

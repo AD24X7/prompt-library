@@ -1,45 +1,30 @@
 {
   "name": "prompt-library-backend",
   "version": "1.0.0",
-  "description": "Backend API for prompt library management",
+  "description": "Backend API for prompt library management - Supabase Version",
   "main": "server.js",
   "scripts": {
-    "start": "npm run db:migrate:deploy && node server-new.js",
-    "build": "npm install && npx prisma generate",
-    "dev": "nodemon server-new.js",
-    "dev:legacy": "nodemon server.js",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "node src/scripts/migrate-data.js",
-    "db:studio": "prisma studio",
-    "db:reset": "prisma migrate reset",
-    "postinstall": "prisma generate"
+    "start": "node server.js",
+    "build": "echo 'No build step required - using Supabase'",
+    "dev": "nodemon server.js",
+    "postinstall": "echo 'Backend install complete'"
   },
   "dependencies": {
-    "@prisma/client": "^7.2.0",
     "@supabase/supabase-js": "^2.91.0",
-    "bcryptjs": "^3.0.3",
+    "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
-    "express-session": "^1.18.2",
-    "fs-extra": "^11.2.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "passport-microsoft": "^2.1.0",
-    "prisma": "^7.2.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=18.0.0"
   }
 }
