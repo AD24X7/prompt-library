@@ -1,0 +1,19 @@
+# Ignore Prisma files (we're using Supabase)
+prisma/
+backend/prisma/
+*.prisma
+prisma.config.ts
+
+# Ignore old server files  
+backend/server-new.js
+backend/src/
+
+# Ignore frontend build
+frontend/
+database/
+
+# Development files
+.env.local
+.env.development
+*.log
+node_modules/.cache

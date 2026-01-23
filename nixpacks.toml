@@ -2,10 +2,10 @@
 nixPkgs = ['nodejs_20', 'npm-9_x']
 
 [phases.install]
-cmds = ['npm ci --include=dev']
+cmds = ['npm ci']
 
 [phases.build]
-cmds = ['cd backend && npm install && npx prisma generate']
+cmds = ['echo "No build step required - using Supabase"']
 
 [start]
-cmd = 'cd backend && node server-new.js'
+cmd = 'node server.js'
