@@ -365,10 +365,13 @@ const PORT = process.env.PORT || 3001;
 
 // Initialize Supabase service safely
 let supabaseService;
+let supabaseError = null;
 try {
   supabaseService = new SupabaseService();
+  console.log('✅ Supabase service initialized successfully');
 } catch (error) {
-  console.error('Failed to initialize Supabase service:', error);
+  console.error('❌ Failed to initialize Supabase service:', error.message);
+  supabaseError = error.message;
 }
 
 // Security middleware
@@ -450,13 +453,38 @@ function generateSummary(prompt, title) {
 }
 
 // Routes
+
+// Railway healthcheck endpoint
+app.get('/health', (req, res) => {
+  const healthData = { 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    supabase: supabaseService ? 'initialized' : 'failed',
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
+  };
+  
+  if (supabaseError) {
+    healthData.supabaseError = supabaseError;
+  }
+  
+  res.json(healthData);
+});
+
+// API healthcheck endpoint 
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  const healthData = { 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     supabase: supabaseService ? 'initialized' : 'failed',
     environment: process.env.NODE_ENV || 'development'
-  });
+  };
+  
+  if (supabaseError) {
+    healthData.supabaseError = supabaseError;
+  }
+  
+  res.json(healthData);
 });
 
 // Root route for Vercel
@@ -658,10 +686,14 @@ app.use('*', (req, res) => {
 
 // Start server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🗄️  Database: Supabase`);
+    console.log(`🗄️  Database: Supabase ${supabaseService ? '✅' : '❌'}`);
+    console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
+    if (supabaseError) {
+      console.log(`⚠️  Supabase error: ${supabaseError}`);
+    }
   });
 }
 
