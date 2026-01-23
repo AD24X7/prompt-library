@@ -4,7 +4,8 @@
   "description": "AI Prompt Library for Directors & Product Managers",
   "main": "server.js",
   "scripts": {
-    "start": "node test-server.js",
+    "start": "node minimal-test.js",
+    "start-test": "node test-server.js", 
     "start-full": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'No build step required'",
