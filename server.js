@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
+const path = require('path');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
@@ -119,23 +120,241 @@ class SupabaseService {
     }
   }
 
+  async createPrompt(promptData, userId) {
+    try {
+      // Get category ID from category name
+      let categoryId = null;
+      if (promptData.category) {
+        const { data: categoryData } = await this.client
+          .from('categories')
+          .select('id')
+          .eq('name', promptData.category)
+          .single();
+        categoryId = categoryData?.id;
+      }
+
+      const { data, error } = await this.client
+        .from('prompts')
+        .insert({
+          title: promptData.title,
+          description: promptData.description,
+          prompt: promptData.prompt,
+          category_id: categoryId,
+          category_name: promptData.category,
+          difficulty: promptData.difficulty || 'medium',
+          estimated_time: promptData.estimatedTime || '5-10 minutes',
+          tags: JSON.stringify(promptData.tags || []),
+          placeholders: JSON.stringify(promptData.placeholders || []),
+          apps: JSON.stringify(promptData.apps || []),
+          urls: JSON.stringify(promptData.urls || []),
+          user_id: userId
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Transform response
+      return {
+        ...data,
+        tags: JSON.parse(data.tags || '[]'),
+        placeholders: JSON.parse(data.placeholders || '[]'),
+        apps: JSON.parse(data.apps || '[]'),
+        urls: JSON.parse(data.urls || '[]'),
+        category: data.category_name,
+        reviews: []
+      };
+    } catch (error) {
+      console.error('Error creating prompt:', error);
+      throw error;
+    }
+  }
+
+  async addReview(promptId, reviewData, userId) {
+    try {
+      const { data, error } = await this.client
+        .from('reviews')
+        .insert({
+          prompt_id: promptId,
+          user_id: userId,
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+          tool_used: reviewData.toolUsed,
+          prompt_edits: reviewData.promptEdits,
+          what_worked: reviewData.whatWorked,
+          what_didnt_work: reviewData.whatDidntWork,
+          improvement_suggestions: reviewData.improvementSuggestions,
+          test_run_graphics_link: reviewData.testRunGraphicsLink,
+          parent_review_id: reviewData.parentReviewId,
+          media_files: JSON.stringify(reviewData.mediaFiles || []),
+          screenshots: JSON.stringify(reviewData.screenshots || [])
+        })
+        .select(`
+          *,
+          user:users(id, name, avatar)
+        `)
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        ...data,
+        media_files: JSON.parse(data.media_files || '[]'),
+        screenshots: JSON.parse(data.screenshots || '[]')
+      };
+    } catch (error) {
+      console.error('Error adding review:', error);
+      throw error;
+    }
+  }
+
+  async getComments(promptId) {
+    try {
+      const { data, error } = await this.client
+        .from('comments')
+        .select(`
+          *,
+          user:users(id, name, avatar),
+          replies:comments!parent_id(
+            *,
+            user:users(id, name, avatar)
+          )
+        `)
+        .eq('prompt_id', promptId)
+        .is('parent_id', null)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error getting comments:', error);
+      throw error;
+    }
+  }
+
+  async addComment(promptId, commentData, userId) {
+    try {
+      const { data, error } = await this.client
+        .from('comments')
+        .insert({
+          prompt_id: promptId,
+          user_id: userId,
+          content: commentData.content,
+          parent_id: commentData.parentId
+        })
+        .select(`
+          *,
+          user:users(id, name, avatar)
+        `)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw error;
+    }
+  }
+
   async getStats() {
     try {
-      const [promptsResult, categoriesResult] = await Promise.all([
+      const [promptsResult, categoriesResult, usageResult, ratingsResult] = await Promise.all([
         this.client.from('prompts').select('id', { count: 'exact' }),
-        this.client.from('categories').select('id', { count: 'exact' })
+        this.client.from('categories').select('id', { count: 'exact' }),
+        this.client.from('prompt_usage').select('id', { count: 'exact' }),
+        this.client.from('prompts').select('rating')
       ]);
+
+      // Top categories
+      const { data: topCategories } = await this.client
+        .from('prompts')
+        .select('category_name')
+        .not('category_name', 'is', null);
+
+      const categoryCounts = topCategories.reduce((acc, prompt) => {
+        acc[prompt.category_name] = (acc[prompt.category_name] || 0) + 1;
+        return acc;
+      }, {});
+
+      const topCategoriesArray = Object.entries(categoryCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Recent prompts
+      const { data: recentPrompts } = await this.client
+        .from('prompts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Calculate average rating
+      const ratings = ratingsResult.data?.map(p => p.rating).filter(r => r > 0) || [];
+      const averageRating = ratings.length > 0 ? 
+        ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0;
 
       return {
         totalPrompts: promptsResult.count || 0,
         totalCategories: categoriesResult.count || 0,
-        totalUsage: 0,
-        averageRating: 4.5,
-        topCategories: [],
-        recentPrompts: []
+        totalUsage: usageResult.count || 0,
+        averageRating: Math.round(averageRating * 100) / 100,
+        topCategories: topCategoriesArray,
+        recentPrompts: recentPrompts?.map(prompt => ({
+          ...prompt,
+          tags: JSON.parse(prompt.tags || '[]'),
+          placeholders: JSON.parse(prompt.placeholders || '[]'),
+          apps: JSON.parse(prompt.apps || '[]'),
+          urls: JSON.parse(prompt.urls || '[]'),
+          category: prompt.category_name
+        })) || []
       };
     } catch (error) {
       console.error('Error getting stats:', error);
+      throw error;
+    }
+  }
+
+  async searchPrompts(query, filters = {}) {
+    try {
+      let dbQuery = this.client
+        .from('prompts')
+        .select(`
+          *,
+          category:categories(id, name),
+          reviews(id, rating)
+        `);
+
+      if (query) {
+        dbQuery = dbQuery.or(
+          `title.ilike.%${query}%,prompt.ilike.%${query}%,category_name.ilike.%${query}%`
+        );
+      }
+
+      if (filters.category) {
+        dbQuery = dbQuery.eq('category_name', filters.category);
+      }
+
+      if (filters.minRating) {
+        dbQuery = dbQuery.gte('rating', filters.minRating);
+      }
+
+      const { data, error } = await dbQuery
+        .order('rating', { ascending: false })
+        .order('usage_count', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map(prompt => ({
+        ...prompt,
+        tags: JSON.parse(prompt.tags || '[]'),
+        placeholders: JSON.parse(prompt.placeholders || '[]'),
+        apps: JSON.parse(prompt.apps || '[]'),
+        urls: JSON.parse(prompt.urls || '[]'),
+        category: prompt.category_name,
+        reviews: prompt.reviews || []
+      }));
+    } catch (error) {
+      console.error('Error searching prompts:', error);
       throw error;
     }
   }
@@ -158,12 +377,19 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS configuration - allow all origins for now
+// CORS configuration
 app.use(cors({
-  origin: true,
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        process.env.FRONTEND_URL, 
+        process.env.RAILWAY_STATIC_URL,
+        /\.up\.railway\.app$/,
+        /\.railway\.app$/
+      ].filter(Boolean)
+    : ['http://localhost:3005', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'user-id']
 }));
 
 // Body parsing middleware
@@ -309,6 +535,96 @@ app.get('/api/prompts/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching prompt:', error);
     res.status(500).json({ error: 'Failed to fetch prompt', details: error.message });
+  }
+});
+
+app.post('/api/prompts', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+    
+    const userId = req.headers['user-id'] || 'anonymous';
+    const prompt = await supabaseService.createPrompt(req.body, userId);
+    
+    // Add summary
+    prompt.summary = generateSummary(prompt.prompt, prompt.title);
+    
+    res.status(201).json(prompt);
+  } catch (error) {
+    console.error('Error creating prompt:', error);
+    res.status(500).json({ error: 'Failed to create prompt', details: error.message });
+  }
+});
+
+// Reviews
+app.post('/api/prompts/:id/reviews', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+    
+    const userId = req.headers['user-id'] || 'anonymous';
+    const review = await supabaseService.addReview(req.params.id, req.body, userId);
+    res.status(201).json(review);
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({ error: 'Failed to add review', details: error.message });
+  }
+});
+
+// Comments
+app.get('/api/prompts/:id/comments', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+    
+    const comments = await supabaseService.getComments(req.params.id);
+    res.json(comments);
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({ error: 'Failed to fetch comments', details: error.message });
+  }
+});
+
+app.post('/api/prompts/:id/comments', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+    
+    const userId = req.headers['user-id'] || 'anonymous';
+    const comment = await supabaseService.addComment(req.params.id, req.body, userId);
+    res.status(201).json(comment);
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({ error: 'Failed to add comment', details: error.message });
+  }
+});
+
+// Search
+app.get('/api/search', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+    
+    const { q: query, category, minRating } = req.query;
+    const filters = { category, minRating: minRating ? parseInt(minRating) : undefined };
+    
+    let prompts = await supabaseService.searchPrompts(query, filters);
+    
+    // Add summaries
+    prompts = prompts.map(prompt => ({
+      ...prompt,
+      summary: generateSummary(prompt.prompt, prompt.title)
+    }));
+    
+    res.json(prompts);
+  } catch (error) {
+    console.error('Error searching prompts:', error);
+    res.status(500).json({ error: 'Failed to search prompts', details: error.message });
   }
 });
 
