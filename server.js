@@ -425,10 +425,23 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging - skip in serverless
-if (process.env.NODE_ENV !== 'production') {
-  app.use(morgan('combined'));
-}
+// Logging - enable for Railway debugging
+app.use(morgan('combined'));
+
+// Global request logging middleware for debugging Railway healthchecks
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  console.log(`📥 INCOMING REQUEST: ${req.method} ${req.url} from ${req.ip || req.connection?.remoteAddress || 'unknown'}`);
+  console.log(`📋 Headers:`, JSON.stringify(req.headers, null, 2));
+  
+  // Log when response finishes
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    console.log(`📤 RESPONSE COMPLETE: ${req.method} ${req.url} -> ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+});
 
 // Generate summary helper function (simplified version)
 function generateSummary(prompt, title) {
@@ -480,18 +493,34 @@ function generateSummary(prompt, title) {
 
 // Routes
 
-// Railway healthcheck endpoint
+// Super simple health endpoint for Railway (no dependencies)
+app.get('/ping', (req, res) => {
+  console.log('🏓 PING received');
+  res.send('pong');
+  console.log('🏓 PONG sent');
+});
+
+// Railway healthcheck endpoint with detailed logging
 app.get('/health', (req, res) => {
+  console.log('🏥 HEALTHCHECK REQUEST RECEIVED!');
+  console.log('📍 Request Headers:', req.headers);
+  console.log('🌐 Request from IP:', req.ip || req.connection?.remoteAddress || 'unknown');
+  console.log('🕐 Request timestamp:', new Date().toISOString());
+  
   const healthData = { 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     supabase: (supabaseService && supabaseService.isConfigured) ? 'configured' : 'not-configured',
     environment: process.env.NODE_ENV || 'development',
     port: PORT,
+    serverUptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
     envVars: {
       SUPABASE_URL: process.env.SUPABASE_URL ? 'set' : 'missing',
       SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? 'set' : 'missing',
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : 'missing'
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : 'missing',
+      NODE_ENV: process.env.NODE_ENV || 'not-set',
+      PORT: process.env.PORT || 'not-set'
     }
   };
   
@@ -499,7 +528,18 @@ app.get('/health', (req, res) => {
     healthData.supabaseError = supabaseError;
   }
   
-  res.json(healthData);
+  console.log('📤 HEALTHCHECK RESPONSE SENDING:', JSON.stringify(healthData, null, 2));
+  
+  // Set explicit headers
+  res.set({
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Connection': 'close'
+  });
+  
+  res.status(200).json(healthData);
+  
+  console.log('✅ HEALTHCHECK RESPONSE SENT SUCCESSFULLY');
 });
 
 // API healthcheck endpoint 
@@ -717,26 +757,97 @@ app.use('*', (req, res) => {
 
 // Start server
 if (require.main === module) {
-  console.log('🔄 Starting server...');
-  console.log(`📍 PORT environment variable: ${process.env.PORT}`);
-  console.log(`🎯 Will bind to port: ${PORT}`);
+  console.log('🔄 INITIALIZING SERVER STARTUP...');
+  console.log(`📍 Raw PORT env: "${process.env.PORT}"`);
+  console.log(`📍 Parsed PORT: ${PORT}`);
+  console.log(`📊 NODE_ENV: "${process.env.NODE_ENV}"`);
+  console.log(`🖥️  Platform: ${process.platform}`);
+  console.log(`📂 Working Directory: ${process.cwd()}`);
+  console.log(`⚡ Node Version: ${process.version}`);
+  console.log(`🧠 Memory Usage:`, process.memoryUsage());
+  
+  // Test if we can create a basic server on the port
+  console.log(`🧪 Testing port ${PORT} availability...`);
   
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server successfully started!`);
-    console.log(`📍 Listening on: 0.0.0.0:${PORT}`);
+    console.log(`\n🎉 ===== SERVER STARTUP SUCCESSFUL =====`);
+    console.log(`🚀 Server is LIVE and READY!`);
+    console.log(`📍 Bound to: 0.0.0.0:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🗄️  Database: Supabase ${(supabaseService && supabaseService.isConfigured) ? '✅' : '❌'}`);
-    console.log(`🌐 Health check: http://0.0.0.0:${PORT}/health`);
-    console.log(`🔗 API endpoints available at: http://0.0.0.0:${PORT}/api/*`);
+    console.log(`🗄️  Database: Supabase ${(supabaseService && supabaseService.isConfigured) ? '✅ CONNECTED' : '❌ NOT CONFIGURED'}`);
+    console.log(`🌐 Health endpoint: http://0.0.0.0:${PORT}/health`);
+    console.log(`🔗 API base: http://0.0.0.0:${PORT}/api/`);
+    console.log(`⏱️  Server uptime: ${process.uptime().toFixed(2)}s`);
+    console.log(`=====================================\n`);
     
     if (supabaseError) {
-      console.log(`⚠️  Supabase not configured: ${supabaseError}`);
-      console.log(`💡 Server will work in fallback mode - add environment variables to enable full functionality`);
+      console.log(`⚠️  SUPABASE WARNING: ${supabaseError}`);
+      console.log(`💡 Server running in FALLBACK MODE - add environment variables for full functionality\n`);
     }
+    
+    // Test our own health endpoint
+    console.log(`🧪 SELF-TESTING health endpoint...`);
+    setTimeout(() => {
+      const http = require('http');
+      const options = {
+        hostname: 'localhost',
+        port: PORT,
+        path: '/health',
+        method: 'GET',
+        timeout: 5000
+      };
+      
+      const req = http.request(options, (res) => {
+        console.log(`✅ SELF-TEST SUCCESS: Health endpoint responding with status ${res.statusCode}`);
+        res.on('data', (chunk) => {
+          console.log(`📄 SELF-TEST RESPONSE:`, chunk.toString());
+        });
+      });
+      
+      req.on('error', (error) => {
+        console.log(`❌ SELF-TEST FAILED:`, error.message);
+      });
+      
+      req.on('timeout', () => {
+        console.log(`⏰ SELF-TEST TIMEOUT: Health endpoint didn't respond within 5s`);
+        req.destroy();
+      });
+      
+      req.end();
+    }, 1000);
   });
   
   server.on('error', (error) => {
-    console.error('❌ Server failed to start:', error);
+    console.error('❌ CRITICAL: Server failed to start!');
+    console.error('❌ Error details:', error);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error errno:', error.errno);
+    console.error('❌ Error syscall:', error.syscall);
+    console.error('❌ Error address:', error.address);
+    console.error('❌ Error port:', error.port);
+    process.exit(1);
+  });
+  
+  server.on('listening', () => {
+    const addr = server.address();
+    console.log(`🎯 Server listening event fired! Address:`, addr);
+  });
+  
+  // Handle process signals gracefully
+  process.on('SIGTERM', () => {
+    console.log('📢 SIGTERM received. Starting graceful shutdown...');
+    server.close(() => {
+      console.log('✅ Server closed. Exiting process.');
+      process.exit(0);
+    });
+  });
+  
+  process.on('SIGINT', () => {
+    console.log('📢 SIGINT received. Starting graceful shutdown...');
+    server.close(() => {
+      console.log('✅ Server closed. Exiting process.');
+      process.exit(0);
+    });
   });
 }
 
