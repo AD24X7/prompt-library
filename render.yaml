@@ -1,50 +1,16 @@
-# Render deployment configuration
 services:
-  # Database
-  - type: pserv
-    name: prompt-library-db
-    env: node
-    plan: free
-    buildCommand: echo "No build needed for database"
-    startCommand: echo "Database service"
-    envVars:
-      - key: DATABASE_URL
-        generateValue: true
-    
-  # Backend API
   - type: web
-    name: prompt-library-backend
-    env: node
+    name: prompt-library
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
     plan: free
-    buildCommand: cd backend && npm install && npx prisma generate
-    startCommand: cd backend && npx prisma migrate deploy && npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: prompt-library-db
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: PORT
-        value: 5000
-      - key: FRONTEND_URL
-        value: https://prompt-library-frontend.onrender.com
-
-  # Frontend
-  - type: web
-    name: prompt-library-frontend
-    env: static
-    plan: free
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://prompt-library-backend.onrender.com/api
-
-databases:
-  - name: prompt-library-db
-    plan: free
+      - key: SUPABASE_URL
+        value: https://gkjdvygmawxigqeqsjnb.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTEwMTQwNywiZXhwIjoyMDg0Njc3NDA3fQ.VHhn0xTOrmHJRtohRJ41SUaLsZcDyV-gJt17gZSuuT8
+      - key: SUPABASE_ANON_KEY  
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE0MDcsImV4cCI6MjA4NDY3NzQwN30.Zk9M-oNt4gR11Dq-2LYvF3q5e22vJUvb5_gB9lddAiI
