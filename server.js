@@ -63,13 +63,13 @@ class SupabaseService {
     }
     
     try {
-      let query = this.client
+      let query = this.adminClient
         .from('prompts')
         .select(`
           *,
           category:categories(id, name, description),
           reviews(
-            id, rating, comment, tool_used, created_at,
+            id, rating, comment, tool_used, created_at, user_id,
             user:users(id, name, avatar)
           )
         `);
@@ -108,13 +108,13 @@ class SupabaseService {
 
   async getPromptById(promptId) {
     try {
-      const { data, error } = await this.client
+      const { data, error } = await this.adminClient
         .from('prompts')
         .select(`
           *,
           category:categories(id, name, description),
           reviews(
-            id, rating, comment, tool_used, created_at,
+            id, rating, comment, tool_used, created_at, user_id,
             user:users(id, name, avatar)
           )
         `)
