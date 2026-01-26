@@ -6,6 +6,8 @@ const compression = require('compression');
 const path = require('path');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Inline Supabase service to avoid import issues in serverless
 class SupabaseService {
@@ -558,6 +560,184 @@ app.get('/', (req, res) => {
     status: 'running',
     timestamp: new Date().toISOString()
   });
+});
+
+// JWT Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+// Auth routes
+app.post('/api/auth/signup', async (req, res) => {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Check if user already exists
+    const existingUser = await supabaseService.adminClient
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (existingUser.data) {
+      return res.status(400).json({ error: 'User already exists with this email' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user in Supabase with password
+    const { data: newUser, error } = await supabaseService.adminClient
+      .from('users')
+      .insert({
+        email,
+        name,
+        password_hash: hashedPassword,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1976d2&color=fff`
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Signup error:', error);
+      return res.status(400).json({ error: 'Failed to create user' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: newUser.id, 
+        email: newUser.email,
+        name: newUser.name 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        avatar: newUser.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user
+    const { data: user, error } = await supabaseService.adminClient
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password
+    if (!user.password_hash) {
+      return res.status(401).json({ error: 'Password not set. Please contact support.' });
+    }
+
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email,
+        name: user.name 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Signin error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    if (!supabaseService) {
+      return res.status(500).json({ error: 'Database service not available' });
+    }
+
+    const { data: user, error } = await supabaseService.adminClient
+      .from('users')
+      .select('id, email, name, avatar')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Categories
