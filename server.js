@@ -406,19 +406,9 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS configuration
+// CORS configuration - temporarily allow all origins for testing
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        process.env.FRONTEND_URL, 
-        process.env.RAILWAY_STATIC_URL,
-        'https://prompt-library-xfxp.vercel.app',
-        'https://prompt-library-xfxp-3bk9ham09-anvitadekhane-uipathcoms-projects.vercel.app',
-        /\.up\.railway\.app$/,
-        /\.railway\.app$/,
-        /\.vercel\.app$/
-      ].filter(Boolean)
-    : ['http://localhost:3005', 'http://localhost:3000'],
+  origin: true, // Allow all origins temporarily
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'user-id']
