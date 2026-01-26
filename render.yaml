@@ -11,6 +11,6 @@ services:
       - key: SUPABASE_URL
         value: https://gkjdvygmawxigqeqsjnb.supabase.co
       - key: SUPABASE_SERVICE_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTEwMTQwNywiZXhwIjoyMDg0Njc3NDA3fQ.VHhn0xTOrmHJRtohRJ41SUaLsZcDyV-gJt17gZSuuT8
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTEwMTQwNywiZXhwIjoyMDg0Njc3NDA3fQ.VHhn0xTOrmHJRtohRj41SUaLsZcDyV-gJt17gZSuuT8
       - key: SUPABASE_ANON_KEY  
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE0MDcsImV4cCI6MjA4NDY3NzQwN30.Zk9M-oNt4gR11Dq-2LYvF3q5e22vJUvb5_gB9lddAiI
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramR2eWdtYXd4aWdxZXFzam5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDE0MDcsImV4cCI6MjA4NDY3NzQwN30.MOoqj6n7BY5cp2X-NAxPAM_Gqcxx265VzVvieCj8-ZI
