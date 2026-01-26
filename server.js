@@ -98,7 +98,23 @@ class SupabaseService {
         apps: typeof prompt.apps === 'string' ? JSON.parse(prompt.apps || '[]') : prompt.apps || [],
         urls: typeof prompt.urls === 'string' ? JSON.parse(prompt.urls || '[]') : prompt.urls || [],
         category: prompt.category_name,
-        reviews: prompt.reviews || []
+        reviews: (prompt.reviews || []).map(review => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          toolUsed: review.tool_used,
+          createdAt: review.created_at,
+          updatedAt: review.updated_at,
+          user: review.user,
+          parentReviewId: review.parent_review_id,
+          promptEdits: review.prompt_edits,
+          whatWorked: review.what_worked,
+          whatDidntWork: review.what_didnt_work,
+          improvementSuggestions: review.improvement_suggestions,
+          testRunGraphicsLink: review.test_run_graphics_link,
+          mediaFiles: review.media_files ? JSON.parse(review.media_files) : [],
+          screenshots: review.screenshots ? JSON.parse(review.screenshots) : []
+        }))
       }));
     } catch (error) {
       console.error('Error getting prompts:', error);
@@ -131,7 +147,23 @@ class SupabaseService {
         apps: typeof data.apps === 'string' ? JSON.parse(data.apps || '[]') : data.apps || [],
         urls: typeof data.urls === 'string' ? JSON.parse(data.urls || '[]') : data.urls || [],
         category: data.category_name,
-        reviews: data.reviews || []
+        reviews: (data.reviews || []).map(review => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          toolUsed: review.tool_used,
+          createdAt: review.created_at,
+          updatedAt: review.updated_at,
+          user: review.user,
+          parentReviewId: review.parent_review_id,
+          promptEdits: review.prompt_edits,
+          whatWorked: review.what_worked,
+          whatDidntWork: review.what_didnt_work,
+          improvementSuggestions: review.improvement_suggestions,
+          testRunGraphicsLink: review.test_run_graphics_link,
+          mediaFiles: review.media_files ? JSON.parse(review.media_files) : [],
+          screenshots: review.screenshots ? JSON.parse(review.screenshots) : []
+        }))
       };
       
       return prompt;
