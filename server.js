@@ -412,8 +412,11 @@ app.use(cors({
     ? [
         process.env.FRONTEND_URL, 
         process.env.RAILWAY_STATIC_URL,
+        'https://prompt-library-xfxp.vercel.app',
+        'https://prompt-library-xfxp-3bk9ham09-anvitadekhane-uipathcoms-projects.vercel.app',
         /\.up\.railway\.app$/,
-        /\.railway\.app$/
+        /\.railway\.app$/,
+        /\.vercel\.app$/
       ].filter(Boolean)
     : ['http://localhost:3005', 'http://localhost:3000'],
   credentials: true,
