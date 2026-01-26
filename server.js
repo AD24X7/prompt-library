@@ -582,6 +582,7 @@ const authenticateToken = (req, res, next) => {
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {
+  try {
     if (!supabaseService) {
       return res.status(500).json({ error: 'Database service not available' });
     }
