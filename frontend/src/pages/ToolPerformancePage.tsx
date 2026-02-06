@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { promptsApi } from '../utils/api';
 import { Prompt, Review } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 interface ToolStats {
   toolName: string;
@@ -37,7 +38,7 @@ interface ToolStats {
   promptsUsed: number;
   recentActivity: string;
   categories: string[];
-  samplePrompts: { title: string; summary: string; rating: number }[];
+  samplePrompts: { id: string; title: string; summary: string; rating: number }[];
   topPerformance: {
     category: string;
     rating: number;
@@ -74,6 +75,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export const ToolPerformancePage: React.FC = () => {
+  const navigate = useNavigate();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [toolStats, setToolStats] = useState<ToolStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +89,7 @@ export const ToolPerformancePage: React.FC = () => {
   const fetchData = async () => {
     try {
       const response = await promptsApi.getAll();
-      const promptsData = (response.data || response) as unknown as Prompt[];
+      const promptsData = (response.data?.data || response.data || response) as unknown as Prompt[];
       setPrompts(promptsData);
       
       // Process data to extract tool statistics
@@ -210,6 +212,7 @@ export const ToolPerformancePage: React.FC = () => {
             ? toolReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / toolReviews.length 
             : 0;
           return {
+            id: prompt.id,
             title: prompt.title,
             summary: prompt.summary || `${prompt.title?.slice(0, 50)}...`,
             rating: avgRating
@@ -259,7 +262,7 @@ export const ToolPerformancePage: React.FC = () => {
     );
   }
 
-  const categoriesSet = new Set(prompts.filter(p => p && p.category).map(p => p.category));
+  const categoriesSet = new Set(Array.isArray(prompts) ? prompts.filter(p => p && p.category).map(p => p.category) : []);
   const categories = ['all', ...Array.from(categoriesSet)];
   const filteredStats = selectedCategory === 'all' 
     ? toolStats 
@@ -278,7 +281,7 @@ export const ToolPerformancePage: React.FC = () => {
         
         <Alert severity="info" sx={{ mb: 3 }}>
           <strong>Data-Driven Insights:</strong> This analysis is based on {toolStats.reduce((sum, tool) => sum + tool.totalReviews, 0)} reviews 
-          across {toolStats.length} AI tools tested with {prompts.length} different prompts.
+          across {toolStats.length} AI tools tested with {Array.isArray(prompts) ? prompts.length : 0} different prompts.
         </Alert>
       </Box>
 
@@ -389,6 +392,21 @@ export const ToolPerformancePage: React.FC = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                       Last activity: {tool.recentActivity}
                     </Typography>
+
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<AssessmentIcon />}
+                        onClick={() => {
+                          // Navigate to prompts page with tool filter
+                          navigate('/prompts', { state: { toolFilter: tool.toolName } });
+                        }}
+                        sx={{ flex: 1 }}
+                      >
+                        View Prompts
+                      </Button>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -433,12 +451,31 @@ export const ToolPerformancePage: React.FC = () => {
                       <Box sx={{ maxWidth: 300 }}>
                         {tool.samplePrompts.length > 0 ? (
                           tool.samplePrompts.slice(0, 2).map((sample, index) => (
-                            <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                            <Box 
+                              key={index} 
+                              sx={{ 
+                                mb: 1, 
+                                p: 1, 
+                                bgcolor: 'grey.50', 
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                  bgcolor: 'primary.50',
+                                  transform: 'translateY(-1px)',
+                                  boxShadow: 1
+                                }
+                              }}
+                              onClick={() => navigate(`/prompts/${sample.id}`)}
+                            >
                               <Typography variant="caption" color="primary.main" fontWeight="bold" sx={{ fontSize: '0.7rem' }}>
                                 ⭐ {sample.rating.toFixed(1)}
                               </Typography>
                               <Typography variant="body2" sx={{ fontSize: '0.8rem', fontStyle: 'italic' }}>
                                 {sample.summary}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', mt: 0.5, display: 'block' }}>
+                                Click to view details →
                               </Typography>
                             </Box>
                           ))

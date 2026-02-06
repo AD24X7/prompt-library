@@ -26,22 +26,33 @@ import {
   AccessTime as AccessTimeIcon,
   TrendingUp as UsageIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { promptsApi, categoriesApi } from '../utils/api';
 import { Prompt, Category } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 export const PromptsPage: React.FC = () => {
+  const { user } = useAuth();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
+  const [toolFilter, setToolFilter] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    // Check if we have a tool filter from navigation state
+    if (location.state?.toolFilter) {
+      setToolFilter(location.state.toolFilter);
+    }
+  }, [location.state]);
 
   const fetchData = async () => {
     try {
@@ -49,8 +60,8 @@ export const PromptsPage: React.FC = () => {
         promptsApi.getAll(),
         categoriesApi.getAll(),
       ]);
-      setPrompts(Array.isArray(promptsResponse.data) ? promptsResponse.data : (promptsResponse as unknown) as Prompt[]);
-      setCategories(Array.isArray(categoriesResponse.data) ? categoriesResponse.data : (categoriesResponse as unknown) as Category[]);
+      setPrompts(Array.isArray(promptsResponse.data?.data) ? promptsResponse.data.data : Array.isArray(promptsResponse.data) ? promptsResponse.data : (promptsResponse as unknown) as Prompt[]);
+      setCategories(Array.isArray(categoriesResponse.data?.data) ? categoriesResponse.data.data : Array.isArray(categoriesResponse.data) ? categoriesResponse.data : (categoriesResponse as unknown) as Category[]);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -66,7 +77,7 @@ export const PromptsPage: React.FC = () => {
         category: selectedCategory || undefined,
       };
       const response = await promptsApi.getAll(params);
-      setPrompts(Array.isArray(response.data) ? response.data : (response as unknown) as Prompt[]);
+      setPrompts(Array.isArray(response.data?.data) ? response.data.data : Array.isArray(response.data) ? response.data : (response as unknown) as Prompt[]);
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
@@ -94,19 +105,36 @@ export const PromptsPage: React.FC = () => {
     }
   };
 
-  const sortedPrompts = [...prompts].sort((a, b) => {
-    switch (sortBy) {
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'rating':
-        return b.rating - a.rating;
-      case 'usageCount':
-        return b.usageCount - a.usageCount;
-      case 'createdAt':
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  });
+  const filteredAndSortedPrompts = [...prompts]
+    .filter(prompt => {
+      // Search term filter
+      const matchesSearch = !searchTerm || 
+        prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prompt.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prompt.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Category filter
+      const matchesCategory = !selectedCategory || prompt.category === selectedCategory;
+
+      // Tool filter
+      const matchesTool = !toolFilter || 
+        prompt.reviews?.some(review => review.toolUsed === toolFilter);
+
+      return matchesSearch && matchesCategory && matchesTool;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'rating':
+          return b.rating - a.rating;
+        case 'usageCount':
+          return b.usageCount - a.usageCount;
+        case 'createdAt':
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
 
   if (loading && prompts.length === 0) {
     return (
@@ -128,23 +156,22 @@ export const PromptsPage: React.FC = () => {
       {/* Search and Filter Controls */}
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
               placeholder="Search prompts..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               InputProps={{
-                endAdornment: (
-                  <IconButton onClick={handleSearch} edge="end">
+                startAdornment: (
+                  <IconButton edge="start">
                     <SearchIcon />
                   </IconButton>
                 ),
               }}
             />
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, md: 2.5 }}>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
@@ -161,7 +188,26 @@ export const PromptsPage: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
+          <Grid size={{ xs: 12, md: 2.5 }}>
+            <FormControl fullWidth>
+              <InputLabel>Tool Used</InputLabel>
+              <Select
+                value={toolFilter}
+                onChange={(e) => setToolFilter(e.target.value)}
+                label="Tool Used"
+              >
+                <MenuItem value="">All Tools</MenuItem>
+                {Array.from(new Set(
+                  prompts.flatMap(p => p.reviews?.map(r => r.toolUsed).filter(Boolean) || [])
+                )).map((tool) => (
+                  <MenuItem key={tool} value={tool}>
+                    {tool}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Sort By</InputLabel>
               <Select
@@ -177,20 +223,33 @@ export const PromptsPage: React.FC = () => {
             </FormControl>
           </Grid>
           <Grid size={{ xs: 12, md: 2 }}>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={() => navigate('/create')}
-            >
-              ➕ Add Test Case
-            </Button>
+            {user && (
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => navigate('/create')}
+              >
+                ➕ Add Test Case
+              </Button>
+            )}
           </Grid>
         </Grid>
       </Box>
 
       {/* Prompts Grid */}
+      {toolFilter && (
+        <Box sx={{ mb: 2 }}>
+          <Chip
+            label={`Filtered by tool: ${toolFilter}`}
+            onDelete={() => setToolFilter('')}
+            color="primary"
+            variant="outlined"
+          />
+        </Box>
+      )}
+      
       <Grid container spacing={3}>
-        {sortedPrompts.map((prompt) => (
+        {filteredAndSortedPrompts.map((prompt) => (
           <Grid size={{ xs: 12, md: 6, lg: 4 }} key={prompt.id}>
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flexGrow: 1 }}>
@@ -207,15 +266,17 @@ export const PromptsPage: React.FC = () => {
                         <ViewIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton 
-                        size="small"
-                        onClick={() => handleDelete(prompt.id)}
-                        color="error"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    {user && user.email === 'anvitaiitb@gmail.com' && (
+                      <Tooltip title="Delete">
+                        <IconButton 
+                          size="small"
+                          onClick={() => handleDelete(prompt.id)}
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Box>
                 </Box>
                 

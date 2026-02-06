@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
   Alert,
   CircularProgress,
   Chip,
@@ -18,15 +19,21 @@ import {
 import {
   Add as AddIcon,
   Category as CategoryIcon,
+  Delete as DeleteIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { categoriesApi, promptsApi } from '../utils/api';
 import { Category, Prompt } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 export const CategoriesPage: React.FC = () => {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -76,6 +83,35 @@ export const CategoriesPage: React.FC = () => {
     }
   };
 
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!categoryToDelete) return;
+
+    try {
+      await categoriesApi.delete(categoryToDelete.id);
+      setCategories(prev => prev.filter(cat => cat.id !== categoryToDelete.id));
+      setDeleteDialogOpen(false);
+      setCategoryToDelete(null);
+      setError('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (error) {
+      setError('Failed to delete category');
+      console.error('Failed to delete category:', error);
+      setDeleteDialogOpen(false);
+      setCategoryToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setCategoryToDelete(null);
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -95,13 +131,15 @@ export const CategoriesPage: React.FC = () => {
             Organize your prompts by categories for better management
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          New Category
-        </Button>
+        {user && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            New Category
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -123,11 +161,26 @@ export const CategoriesPage: React.FC = () => {
             <Grid size={{ xs: 12, md: 6, lg: 4 }} key={category.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
-                  <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-                    <CategoryIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography variant="h6" component="h3">
-                      {category.name}
-                    </Typography>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                    <Box display="flex" alignItems="center">
+                      <CategoryIcon color="primary" sx={{ mr: 1 }} />
+                      <Typography variant="h6" component="h3">
+                        {category.name}
+                      </Typography>
+                    </Box>
+                    {user && user.email === 'anvitaiitb@gmail.com' && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(category)}
+                        color="error"
+                        sx={{ 
+                          opacity: 0.7,
+                          '&:hover': { opacity: 1 }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
                   </Box>
                   
                   <Typography 
@@ -163,15 +216,17 @@ export const CategoriesPage: React.FC = () => {
                 No categories yet
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Create your first category to organize your prompts!
+                {user ? 'Create your first category to organize your prompts!' : 'Sign in to create and manage categories'}
               </Typography>
-              <Button 
-                variant="contained" 
-                startIcon={<AddIcon />}
-                onClick={() => setCreateDialogOpen(true)}
-              >
-                Create Category
-              </Button>
+              {user && (
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateDialogOpen(true)}
+                >
+                  Create Category
+                </Button>
+              )}
             </Box>
           </Grid>
         )}
@@ -218,6 +273,45 @@ export const CategoriesPage: React.FC = () => {
             disabled={!newCategory.name.trim()}
           >
             Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <WarningIcon color="warning" />
+            Delete Category
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Are you sure you want to delete the category "{categoryToDelete?.name}"?
+          </Typography>
+          {categoryToDelete && getCategoryPromptCount(categoryToDelete.name) > 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              This category contains {getCategoryPromptCount(categoryToDelete.name)} prompt(s). 
+              Deleting this category will not delete the prompts, but they will no longer be associated with this category.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteIcon />}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

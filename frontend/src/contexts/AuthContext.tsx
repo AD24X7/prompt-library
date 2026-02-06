@@ -38,7 +38,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           // Verify token is still valid
           const response = await authApi.getMe();
-          setUser(response.data.user);
+          const responseData = response.data as any;
+          setUser(responseData.data?.user || responseData.user);
         } catch (error) {
           console.error('Token verification failed:', error);
           localStorage.removeItem('authToken');
@@ -55,10 +56,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authApi.signIn({ email, password });
+      const responseData = response.data as any;
       
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      setUser(response.data.user);
+      localStorage.setItem('authToken', responseData.data?.token || responseData.token);
+      localStorage.setItem('user', JSON.stringify(responseData.data?.user || responseData.user));
+      setUser(responseData.data?.user || responseData.user);
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(error.response?.data?.error || 'Failed to sign in');
@@ -71,10 +73,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authApi.signUp({ email, password, name });
+      const responseData = response.data as any;
       
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      setUser(response.data.user);
+      localStorage.setItem('authToken', responseData.data?.token || responseData.token);
+      localStorage.setItem('user', JSON.stringify(responseData.data?.user || responseData.user));
+      setUser(responseData.data?.user || responseData.user);
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw new Error(error.response?.data?.error || 'Failed to sign up');

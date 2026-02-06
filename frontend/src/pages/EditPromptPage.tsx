@@ -23,6 +23,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { promptsApi, categoriesApi } from '../utils/api';
 import { Category, Prompt } from '../types';
 import { extractPlaceholders, validatePromptText } from '../utils/promptUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FormData {
   title: string;
@@ -35,6 +36,7 @@ interface FormData {
 }
 
 export const EditPromptPage: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -77,7 +79,7 @@ export const EditPromptPage: React.FC = () => {
     try {
       setLoadingPrompt(true);
       const response = await promptsApi.getById(id);
-      const prompt: Prompt = (response.data || response) as unknown as Prompt;
+      const prompt: Prompt = (response.data?.data || response.data || response) as unknown as Prompt;
       
       setFormData({
         title: prompt.title,
@@ -149,11 +151,11 @@ export const EditPromptPage: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    if (!formData.title.trim()) {
+    if (!formData.title?.trim()) {
       setError('Title is required');
       return false;
     }
-    if (!formData.prompt.trim()) {
+    if (!formData.prompt?.trim()) {
       setError('Prompt content is required');
       return false;
     }
@@ -188,9 +190,12 @@ export const EditPromptPage: React.FC = () => {
       await promptsApi.update(id, promptData);
       setSuccess(true);
       setTimeout(() => navigate(`/prompts/${id}`), 1500);
-    } catch (error) {
-      setError('Failed to update prompt. Please try again.');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to update prompt. Please try again.';
+      setError(errorMessage);
       console.error('Update failed:', error);
+      console.error('Error details:', error.response?.data);
+      console.error('Status code:', error.response?.status);
     } finally {
       setLoading(false);
     }
@@ -209,6 +214,16 @@ export const EditPromptPage: React.FC = () => {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Alert severity="info">
+          Please sign in to edit prompts.
+        </Alert>
       </Box>
     );
   }
@@ -423,7 +438,7 @@ export const EditPromptPage: React.FC = () => {
                 variant="contained"
                 startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                 onClick={handleSubmit}
-                disabled={loading || !formData.title.trim() || !formData.prompt.trim()}
+                disabled={loading || !formData.title?.trim() || !formData.prompt?.trim()}
               >
                 {loading ? 'Updating...' : 'Update Prompt'}
               </Button>

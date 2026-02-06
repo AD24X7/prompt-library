@@ -32,10 +32,13 @@ import {
   Upload as UploadIcon,
   Delete as DeleteIcon,
   Star as StarIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { Review, Prompt, Comment } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { promptsApi, commentsApi } from '../utils/api';
+import { promptsApi, commentsApi, reviewsApi } from '../utils/api';
 
 interface UnifiedReviewSystemProps {
   prompt: Prompt;
@@ -367,7 +370,7 @@ export const UnifiedReviewSystem: React.FC<UnifiedReviewSystemProps> = ({
               <AccordionDetails>
                 {/* Reviews */}
                 {group.reviews.map((review) => (
-                  <ReviewCard key={review.id} review={review} />
+                  <ReviewCard key={review.id} review={review} onUpdate={onRefresh} />
                 ))}
                 
                 {/* Comments */}
@@ -576,96 +579,243 @@ export const UnifiedReviewSystem: React.FC<UnifiedReviewSystemProps> = ({
 };
 
 // Review Card Component
-const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
-  <Paper variant="outlined" sx={{ p: 3, mb: 2, bgcolor: 'background.paper' }}>
-    <Box display="flex" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
-      <Box display="flex" alignItems="center" gap={1}>
-        <Rating value={review.rating} readOnly size="small" />
-        <Typography variant="body2" color="text.secondary">
-          {new Date(review.createdAt).toLocaleDateString()}
-        </Typography>
+const ReviewCard: React.FC<{ review: Review; onUpdate: () => void }> = ({ review, onUpdate }) => {
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    rating: review.rating,
+    comment: review.comment || '',
+    promptEdits: review.promptEdits || '',
+    whatWorked: review.whatWorked || '',
+    whatDidntWork: review.whatDidntWork || '',
+    improvementSuggestions: review.improvementSuggestions || '',
+  });
+
+  const isOwnReview = user?.email === review.userEmail || !review.userEmail;
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      await reviewsApi.update(review.id, editData);
+      setIsEditing(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update review:', error);
+      // You could add a toast notification here for user feedback
+    }
+  };
+
+  const handleCancel = () => {
+    setEditData({
+      rating: review.rating,
+      comment: review.comment || '',
+      promptEdits: review.promptEdits || '',
+      whatWorked: review.whatWorked || '',
+      whatDidntWork: review.whatDidntWork || '',
+      improvementSuggestions: review.improvementSuggestions || '',
+    });
+    setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this review?')) {
+      try {
+        await reviewsApi.delete(review.id);
+        onUpdate();
+      } catch (error) {
+        console.error('Failed to delete review:', error);
+        // You could add a toast notification here for user feedback
+      }
+    }
+  };
+
+  return (
+    <Paper variant="outlined" sx={{ p: 3, mb: 2, bgcolor: 'background.paper' }}>
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
+        <Box display="flex" alignItems="center" gap={1}>
+          {isEditing ? (
+            <Rating 
+              value={editData.rating} 
+              onChange={(_, value) => setEditData(prev => ({ ...prev, rating: value || 0 }))}
+              size="small" 
+            />
+          ) : (
+            <Rating value={review.rating} readOnly size="small" />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {new Date(review.createdAt).toLocaleDateString()}
+          </Typography>
+        </Box>
+        
+        {isOwnReview && (
+          <Box display="flex" gap={0.5}>
+            {!isEditing ? (
+              <>
+                <IconButton size="small" onClick={handleEdit}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton size="small" onClick={handleDelete} color="error">
+                  <DeleteIcon />
+                </IconButton>
+              </>
+            ) : (
+              <>
+                <IconButton size="small" onClick={handleSave} color="primary">
+                  <SaveIcon />
+                </IconButton>
+                <IconButton size="small" onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            )}
+          </Box>
+        )}
       </Box>
-    </Box>
 
-    {review.comment && (
-      <Typography variant="body1" sx={{ mb: 2 }}>
-        {review.comment}
-      </Typography>
-    )}
+      {isEditing ? (
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Comment"
+            value={editData.comment}
+            onChange={(e) => setEditData(prev => ({ ...prev, comment: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            label="Prompt Modifications"
+            value={editData.promptEdits}
+            onChange={(e) => setEditData(prev => ({ ...prev, promptEdits: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            label="What Worked"
+            value={editData.whatWorked}
+            onChange={(e) => setEditData(prev => ({ ...prev, whatWorked: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            label="What Didn't Work"
+            value={editData.whatDidntWork}
+            onChange={(e) => setEditData(prev => ({ ...prev, whatDidntWork: e.target.value }))}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            label="Improvement Suggestions"
+            value={editData.improvementSuggestions}
+            onChange={(e) => setEditData(prev => ({ ...prev, improvementSuggestions: e.target.value }))}
+          />
+        </Box>
+      ) : (
+        <>
+          {review.comment && (
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {review.comment}
+            </Typography>
+          )}
 
-    {review.promptEdits && (
-      <Box sx={{ mb: 2, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
-        <Typography variant="subtitle2" color="info.700" gutterBottom>
-          ✏️ Prompt Modifications
-        </Typography>
-        <Typography variant="body2" color="info.800">
-          {review.promptEdits}
-        </Typography>
-      </Box>
-    )}
-
-    <Grid container spacing={2}>
-      {review.whatWorked && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box sx={{ p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
-            <Typography variant="subtitle2" color="success.700" gutterBottom>
-              ✅ What Worked
-            </Typography>
-            <Typography variant="body2" color="success.800">
-              {review.whatWorked}
-            </Typography>
-          </Box>
-        </Grid>
-      )}
-
-      {review.whatDidntWork && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box sx={{ p: 2, bgcolor: 'warning.50', borderRadius: 1 }}>
-            <Typography variant="subtitle2" color="warning.700" gutterBottom>
-              ⚠️ What Didn't Work
-            </Typography>
-            <Typography variant="body2" color="warning.800">
-              {review.whatDidntWork}
-            </Typography>
-          </Box>
-        </Grid>
-      )}
-
-      {review.improvementSuggestions && (
-        <Grid size={{ xs: 12 }}>
-          <Box sx={{ p: 2, bgcolor: 'purple.50', borderRadius: 1 }}>
-            <Typography variant="subtitle2" color="purple.700" gutterBottom>
-              💡 Improvement Suggestions
-            </Typography>
-            <Typography variant="body2" color="purple.800">
-              {review.improvementSuggestions}
-            </Typography>
-          </Box>
-        </Grid>
-      )}
-
-      {review.screenshots && review.screenshots.length > 0 && (
-        <Grid size={{ xs: 12 }}>
-          <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              📸 Screenshots ({review.screenshots.length})
-            </Typography>
-            <Box display="flex" gap={1} sx={{ overflowX: 'auto' }}>
-              {review.screenshots.map((screenshot, index) => (
-                <Box
-                  key={index}
-                  component="img"
-                  src={screenshot}
-                  sx={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 1 }}
-                />
-              ))}
+          {/* Debug: Show all review properties */}
+          {process.env.NODE_ENV === 'development' && (
+            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', fontSize: '0.75rem' }}>
+              Debug: Review has - whatWorked: {review.whatWorked ? 'Yes' : 'No'}, 
+              whatDidntWork: {review.whatDidntWork ? 'Yes' : 'No'}, 
+              promptEdits: {review.promptEdits ? 'Yes' : 'No'},
+              improvementSuggestions: {review.improvementSuggestions ? 'Yes' : 'No'}
             </Box>
-          </Box>
-        </Grid>
+          )}
+
+          {review.promptEdits && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+              <Typography variant="subtitle2" color="info.700" gutterBottom>
+                ✏️ Prompt Modifications
+              </Typography>
+              <Typography variant="body2" color="info.800">
+                {review.promptEdits}
+              </Typography>
+            </Box>
+          )}
+
+          <Grid container spacing={2}>
+            {review.whatWorked && (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" color="success.700" gutterBottom>
+                    ✅ What Worked
+                  </Typography>
+                  <Typography variant="body2" color="success.800">
+                    {review.whatWorked}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
+            {review.whatDidntWork && (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ p: 2, bgcolor: 'warning.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" color="warning.700" gutterBottom>
+                    ⚠️ What Didn't Work
+                  </Typography>
+                  <Typography variant="body2" color="warning.800">
+                    {review.whatDidntWork}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
+            {review.improvementSuggestions && (
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ p: 2, bgcolor: 'purple.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" color="purple.700" gutterBottom>
+                    💡 Improvement Suggestions
+                  </Typography>
+                  <Typography variant="body2" color="purple.800">
+                    {review.improvementSuggestions}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
+            {review.screenshots && review.screenshots.length > 0 && (
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    📸 Screenshots ({review.screenshots.length})
+                  </Typography>
+                  <Box display="flex" gap={1} sx={{ overflowX: 'auto' }}>
+                    {review.screenshots.map((screenshot, index) => (
+                      <Box
+                        key={index}
+                        component="img"
+                        src={screenshot}
+                        sx={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 1 }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </>
       )}
-    </Grid>
-  </Paper>
-);
+    </Paper>
+  );
+};
 
 // Comment Card Component
 const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (

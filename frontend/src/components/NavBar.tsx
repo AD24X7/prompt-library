@@ -12,21 +12,25 @@ import {
 import {
   Assessment as AssessmentIcon,
   MenuBook as LibraryIcon,
-  Category as CategoryIcon,
   Dashboard as DashboardIcon,
   Speed as SpeedIcon,
+  Tag as TagIcon,
+  Category as CategoryIcon,
 } from '@mui/icons-material';
 import { UserMenu } from './UserMenu';
+import { useAuth } from '../contexts/AuthContext';
 
 export const NavBar: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Tool Performance', icon: <SpeedIcon /> },
-    { path: '/prompts', label: 'Test Cases', icon: <LibraryIcon /> },
-    { path: '/dashboard', label: 'Analytics', icon: <DashboardIcon /> },
+    { path: '/', label: 'Browse by Tags', icon: <TagIcon /> },
+    { path: '/performance', label: 'Tool Performance', icon: <SpeedIcon /> },
+    { path: '/prompts', label: 'All Prompts', icon: <LibraryIcon /> },
     { path: '/categories', label: 'Categories', icon: <CategoryIcon /> },
+    { path: '/dashboard', label: 'Analytics', icon: <DashboardIcon /> },
   ];
 
   return (
@@ -59,14 +63,16 @@ export const NavBar: React.FC = () => {
           ))}
         </Box>
         
-        <Button
-          color="inherit"
-          variant="outlined"
-          onClick={() => navigate('/create')}
-          sx={{ ml: 2, borderColor: 'rgba(255,255,255,0.5)' }}
-        >
-          New Prompt
-        </Button>
+        {user && (
+          <Button
+            color="inherit"
+            variant="outlined"
+            onClick={() => navigate('/create')}
+            sx={{ ml: 2, borderColor: 'rgba(255,255,255,0.5)' }}
+          >
+            New Prompt
+          </Button>
+        )}
 
         <Box sx={{ ml: 2 }}>
           <UserMenu />

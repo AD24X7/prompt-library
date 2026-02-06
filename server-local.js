@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +22,15 @@ function readJSONFile(filePath) {
   } catch (error) {
     console.error(`Error reading ${filePath}:`, error);
     return [];
+  }
+}
+
+function writeJSONFile(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error(`Error writing ${filePath}:`, error);
+    throw error;
   }
 }
 
@@ -124,12 +134,14 @@ app.post('/api/auth/signin', async (req, res) => {
     );
     
     res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar
+        }
       }
     });
   } catch (error) {
@@ -139,7 +151,59 @@ app.post('/api/auth/signin', async (req, res) => {
 });
 
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  res.json({ user: req.user });
+  res.json({ data: { user: req.user } });
+});
+
+// User registration
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+    
+    const users = readJSONFile(usersPath);
+    
+    // Check if user already exists
+    if (users.find(u => u.email === email)) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const user = {
+      id: uuidv4(),
+      email,
+      name,
+      password: hashedPassword,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1976d2&color=fff`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    users.push(user);
+    writeJSONFile(usersPath, users);
+    
+    // Generate token
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+    
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    
+    res.status(201).json({
+      data: {
+        success: true,
+        token,
+        user: userWithoutPassword
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
 });
 
 // Categories
@@ -159,7 +223,7 @@ app.get('/api/prompts', (req, res) => {
       summary: generateSummary(prompt.prompt, prompt.title)
     }));
     
-    res.json(prompts);
+    res.json({ data: prompts });
   } catch (error) {
     console.error('Error fetching prompts:', error);
     res.status(500).json({ error: 'Failed to fetch prompts' });
@@ -178,10 +242,235 @@ app.get('/api/prompts/:id', (req, res) => {
     // Add summary
     prompt.summary = generateSummary(prompt.prompt, prompt.title);
     
-    res.json(prompt);
+    res.json({ data: prompt });
   } catch (error) {
     console.error('Error fetching prompt:', error);
     res.status(500).json({ error: 'Failed to fetch prompt' });
+  }
+});
+
+// Create new prompt
+app.post('/api/prompts', authenticateToken, (req, res) => {
+  try {
+    const { title, description, prompt, category, tags, difficulty, estimatedTime, placeholders } = req.body;
+    
+    if (!title || !prompt) {
+      return res.status(400).json({ error: 'Title and prompt are required' });
+    }
+    
+    const prompts = readJSONFile(promptsPath);
+    const newPrompt = {
+      id: uuidv4(),
+      title,
+      description: description || '',
+      prompt,
+      category: category || 'Uncategorized',
+      tags: tags || [],
+      difficulty: difficulty || 'medium',
+      estimatedTime: estimatedTime || '5-10 minutes',
+      placeholders: placeholders || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usageCount: 0,
+      rating: 0,
+      reviews: []
+    };
+    
+    prompts.push(newPrompt);
+    writeJSONFile(promptsPath, prompts);
+    
+    res.status(201).json({ data: newPrompt });
+  } catch (error) {
+    console.error('Error creating prompt:', error);
+    res.status(500).json({ error: 'Failed to create prompt' });
+  }
+});
+
+// Update prompt
+app.put('/api/prompts/:id', authenticateToken, (req, res) => {
+  try {
+    const prompts = readJSONFile(promptsPath);
+    const index = prompts.findIndex(p => p.id === req.params.id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    const updatedPrompt = {
+      ...prompts[index],
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+    
+    prompts[index] = updatedPrompt;
+    writeJSONFile(promptsPath, prompts);
+    
+    res.json({ data: updatedPrompt });
+  } catch (error) {
+    console.error('Error updating prompt:', error);
+    res.status(500).json({ error: 'Failed to update prompt' });
+  }
+});
+
+// Delete prompt
+app.delete('/api/prompts/:id', authenticateToken, (req, res) => {
+  try {
+    const prompts = readJSONFile(promptsPath);
+    const index = prompts.findIndex(p => p.id === req.params.id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    prompts.splice(index, 1);
+    writeJSONFile(promptsPath, prompts);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting prompt:', error);
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
+});
+
+// Add review to prompt
+app.post('/api/prompts/:id/review', authenticateToken, (req, res) => {
+  try {
+    const prompts = readJSONFile(promptsPath);
+    const index = prompts.findIndex(p => p.id === req.params.id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    const { rating, comment, toolUsed, promptEdits, whatWorked, whatDidntWork, improvementSuggestions, screenshots } = req.body;
+    
+    if (!rating || !toolUsed) {
+      return res.status(400).json({ error: 'Rating and toolUsed are required' });
+    }
+    
+    const review = {
+      id: uuidv4(),
+      rating,
+      comment: comment || '',
+      toolUsed,
+      promptEdits: promptEdits || '',
+      whatWorked: whatWorked || '',
+      whatDidntWork: whatDidntWork || '',
+      improvementSuggestions: improvementSuggestions || '',
+      screenshots: screenshots || [],
+      userEmail: req.user.email,
+      userName: req.user.name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    prompts[index].reviews.push(review);
+    
+    // Recalculate average rating
+    const reviews = prompts[index].reviews;
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    prompts[index].rating = totalRating / reviews.length;
+    prompts[index].updatedAt = new Date().toISOString();
+    
+    writeJSONFile(promptsPath, prompts);
+    
+    res.status(201).json({ data: review });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({ error: 'Failed to add review' });
+  }
+});
+
+// Update review
+app.put('/api/reviews/:id', authenticateToken, (req, res) => {
+  try {
+    const prompts = readJSONFile(promptsPath);
+    let reviewFound = false;
+    let updatedPrompt = null;
+    
+    for (const prompt of prompts) {
+      const reviewIndex = prompt.reviews.findIndex(r => r.id === req.params.id);
+      if (reviewIndex !== -1) {
+        const review = prompt.reviews[reviewIndex];
+        
+        // Check if user owns this review
+        if (review.userEmail !== req.user.email) {
+          return res.status(403).json({ error: 'Not authorized to edit this review' });
+        }
+        
+        // Update review
+        prompt.reviews[reviewIndex] = {
+          ...review,
+          ...req.body,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Recalculate average rating
+        const totalRating = prompt.reviews.reduce((sum, r) => sum + r.rating, 0);
+        prompt.rating = totalRating / prompt.reviews.length;
+        prompt.updatedAt = new Date().toISOString();
+        
+        updatedPrompt = prompt;
+        reviewFound = true;
+        break;
+      }
+    }
+    
+    if (!reviewFound) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    
+    writeJSONFile(promptsPath, prompts);
+    
+    res.json({ success: true, prompt: updatedPrompt });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({ error: 'Failed to update review' });
+  }
+});
+
+// Delete review
+app.delete('/api/reviews/:id', authenticateToken, (req, res) => {
+  try {
+    const prompts = readJSONFile(promptsPath);
+    let reviewFound = false;
+    
+    for (const prompt of prompts) {
+      const reviewIndex = prompt.reviews.findIndex(r => r.id === req.params.id);
+      if (reviewIndex !== -1) {
+        const review = prompt.reviews[reviewIndex];
+        
+        // Check if user owns this review
+        if (review.userEmail !== req.user.email) {
+          return res.status(403).json({ error: 'Not authorized to delete this review' });
+        }
+        
+        prompt.reviews.splice(reviewIndex, 1);
+        
+        // Recalculate average rating
+        if (prompt.reviews.length > 0) {
+          const totalRating = prompt.reviews.reduce((sum, r) => sum + r.rating, 0);
+          prompt.rating = totalRating / prompt.reviews.length;
+        } else {
+          prompt.rating = 0;
+        }
+        prompt.updatedAt = new Date().toISOString();
+        
+        reviewFound = true;
+        break;
+      }
+    }
+    
+    if (!reviewFound) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    
+    writeJSONFile(promptsPath, prompts);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ error: 'Failed to delete review' });
   }
 });
 
