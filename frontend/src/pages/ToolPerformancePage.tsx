@@ -9,12 +9,6 @@ import {
   Rating,
   Chip,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Avatar,
   LinearProgress,
   Tabs,
@@ -37,6 +31,7 @@ interface ToolStats {
   promptsUsed: number;
   recentActivity: string;
   categories: string[];
+  prompts: Prompt[]; // Add prompts array for tag filtering
   samplePrompts: { title: string; summary: string; rating: number }[];
   topPerformance: {
     category: string;
@@ -79,6 +74,9 @@ export const ToolPerformancePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [filterBy, setFilterBy] = useState<'category' | 'tag'>('category');
+  const [selectedTagType, setSelectedTagType] = useState<string>('all');
 
   useEffect(() => {
     fetchData();
@@ -228,6 +226,7 @@ export const ToolPerformancePage: React.FC = () => {
           ? new Date(Math.max(...reviews.map(r => new Date(r.createdAt || Date.now()).getTime()))).toLocaleDateString()
           : 'No activity',
         categories: Array.from(data.categories),
+        prompts: data.prompts,
         samplePrompts,
         topPerformance,
         worstPerformance,
@@ -261,9 +260,83 @@ export const ToolPerformancePage: React.FC = () => {
 
   const categoriesSet = new Set(prompts.filter(p => p && p.category).map(p => p.category));
   const categories = ['all', ...Array.from(categoriesSet)];
-  const filteredStats = selectedCategory === 'all' 
-    ? toolStats 
-    : toolStats.filter(stat => stat.categories.includes(selectedCategory));
+  
+  // Tag type definitions
+  const TAG_TYPES: Record<string, string> = {
+    'all': 'All Types',
+    'usage-pattern': 'Usage Pattern',
+    'cognitive-type': 'Cognitive Type', 
+    'interaction-style': 'Interaction Style',
+    'turn-complexity': 'Turn Complexity',
+    'domain-category': 'Domain Category'
+  };
+
+  const TAG_VALUES: Record<string, string[]> = {
+    'usage-pattern': ['one-off', 'repetitive'],
+    'cognitive-type': ['mechanical', 'reasoning', 'mech+reason'],
+    'interaction-style': ['ui-heavy', 'skills-heavy'],
+    'turn-complexity': ['single-turn', 'multi-turn', 'extended'],
+    'domain-category': ['strategy', 'analysis', 'creative', 'technical', 'communication', 'education', 'management', 'marketing', 'personal']
+  };
+
+  // Get available tags based on selected tag type
+  const getAvailableTags = () => {
+    if (selectedTagType === 'all') {
+      // Don't show individual tags when 'all' tag type is selected - too messy
+      return ['all'];
+    } else {
+      return ['all', ...(TAG_VALUES[selectedTagType] || [])];
+    }
+  };
+
+  const tags = getAvailableTags();
+
+  // Helper function to get tags of a specific type from a prompt
+  const getTagsOfType = (prompt: Prompt, tagType: string) => {
+    if (!prompt.tags || !Array.isArray(prompt.tags)) return [];
+    if (tagType === 'all') return prompt.tags;
+    return prompt.tags.filter(tag => TAG_VALUES[tagType]?.includes(tag) || false);
+  };
+
+  // Helper function to get all tag types for a tool's prompts
+  const getToolTagSummary = (toolStat: ToolStats) => {
+    if (!toolStat.prompts) return {};
+    
+    const tagSummary: Record<string, Set<string>> = {};
+    
+    Object.keys(TAG_VALUES).forEach(tagType => {
+      tagSummary[tagType] = new Set();
+      toolStat.prompts.forEach(prompt => {
+        const tagsOfType = getTagsOfType(prompt, tagType);
+        tagsOfType.forEach(tag => tagSummary[tagType].add(tag));
+      });
+    });
+    
+    // Convert Sets to Arrays
+    const result: Record<string, string[]> = {};
+    Object.entries(tagSummary).forEach(([type, tagSet]) => {
+      result[type] = Array.from(tagSet);
+    });
+    
+    return result;
+  };
+  
+  const filteredStats = (() => {
+    if (filterBy === 'category') {
+      return selectedCategory === 'all' 
+        ? toolStats 
+        : toolStats.filter(stat => stat.categories.includes(selectedCategory));
+    } else {
+      if (selectedTag === 'all') return toolStats;
+      
+      // Filter tools that have reviews on prompts with the selected tag
+      return toolStats.filter(stat => 
+        stat.prompts && Array.isArray(stat.prompts) && stat.prompts.some(prompt => 
+          prompt && prompt.tags && Array.isArray(prompt.tags) && prompt.tags.includes(selectedTag)
+        )
+      );
+    }
+  })();
 
   return (
     <Box>
@@ -273,7 +346,7 @@ export const ToolPerformancePage: React.FC = () => {
           🎯 AI Tool Performance Analysis
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-          Compare AI tools based on real-world performance across different prompt categories
+          Compare AI tools based on real-world performance across different departments and task types
         </Typography>
         
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -282,30 +355,95 @@ export const ToolPerformancePage: React.FC = () => {
         </Alert>
       </Box>
 
-      {/* Category Filter */}
+      {/* Filter Controls */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+        <Box display="flex" alignItems="center" gap={2} mb={2}>
           <Typography variant="subtitle2" color="text.secondary">
-            Filter by Category:
+            Filter by:
           </Typography>
-          {categories.map(category => (
-            <Chip
-              key={category}
-              label={category === 'all' ? 'All Categories' : category}
-              onClick={() => setSelectedCategory(category)}
-              color={selectedCategory === category ? 'primary' : 'default'}
-              variant={selectedCategory === category ? 'filled' : 'outlined'}
-            />
-          ))}
+          <Button
+            variant={filterBy === 'category' ? 'contained' : 'outlined'}
+            onClick={() => {
+              setFilterBy('category');
+              setSelectedCategory('all');
+            }}
+            size="small"
+          >
+            Department
+          </Button>
+          <Button
+            variant={filterBy === 'tag' ? 'contained' : 'outlined'}
+            onClick={() => {
+              setFilterBy('tag');
+              setSelectedTagType('all');
+              setSelectedTag('all');
+            }}
+            size="small"
+          >
+            Tag Type
+          </Button>
         </Box>
+        
+        {filterBy === 'category' ? (
+          <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+            <Typography variant="body2" color="text.secondary">
+              Departments:
+            </Typography>
+            {categories.map(category => (
+              <Chip
+                key={category}
+                label={category === 'all' ? 'All Departments' : category}
+                onClick={() => setSelectedCategory(category)}
+                color={selectedCategory === category ? 'primary' : 'default'}
+                variant={selectedCategory === category ? 'filled' : 'outlined'}
+                size="small"
+              />
+            ))}
+          </Box>
+        ) : (
+          <Box>
+            <Box display="flex" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
+              <Typography variant="body2" color="text.secondary">
+                Tag Type:
+              </Typography>
+              {Object.entries(TAG_TYPES).map(([typeKey, typeLabel]) => (
+                <Chip
+                  key={typeKey}
+                  label={typeLabel}
+                  onClick={() => {
+                    setSelectedTagType(typeKey);
+                    setSelectedTag('all');
+                  }}
+                  color={selectedTagType === typeKey ? 'secondary' : 'default'}
+                  variant={selectedTagType === typeKey ? 'filled' : 'outlined'}
+                  size="small"
+                />
+              ))}
+            </Box>
+            <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+              <Typography variant="body2" color="text.secondary">
+                {selectedTagType === 'all' ? 'Select a tag type above to see available tags' : `${TAG_TYPES[selectedTagType]}:`}
+              </Typography>
+              {selectedTagType !== 'all' && tags.map(tag => (
+                <Chip
+                  key={tag}
+                  label={tag === 'all' ? 'All' : tag}
+                  onClick={() => setSelectedTag(tag)}
+                  color={selectedTag === tag ? 'primary' : 'default'}
+                  variant={selectedTag === tag ? 'filled' : 'outlined'}
+                  size="small"
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
       </Paper>
 
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="🏆 Tool Rankings" icon={<TrendingUpIcon />} />
-          <Tab label="📊 Performance Matrix" icon={<AssessmentIcon />} />
-          <Tab label="🔄 Tool Comparison" icon={<CompareIcon />} />
+          <Tab label="📊 Performance by Tag Type" icon={<AssessmentIcon />} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -353,38 +491,63 @@ export const ToolPerformancePage: React.FC = () => {
                       />
                     </Box>
 
-                    <Typography variant="subtitle2" gutterBottom>
-                      🎯 Best Performance:
-                    </Typography>
-                    {tool.topPerformance.slice(0, 2).map(perf => (
-                      <Box key={perf.category} display="flex" justifyContent="space-between" mb={1}>
-                        <Typography variant="body2" noWrap>
-                          {perf.category}
-                        </Typography>
-                        <Typography variant="body2" color="success.main" fontWeight="bold">
-                          {perf.rating.toFixed(1)} ⭐
-                        </Typography>
-                      </Box>
-                    ))}
 
-                    {tool.strengths.length > 0 && (
-                      <Box mt={2}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          💪 Key Strengths:
-                        </Typography>
-                        <Box display="flex" flexWrap="wrap" gap={0.5}>
-                          {tool.strengths.slice(0, 3).map(strength => (
-                            <Chip
-                              key={strength}
-                              label={strength}
-                              size="small"
-                              variant="outlined"
-                              color="success"
-                            />
-                          ))}
+                    {/* Key Insights Summary */}
+                    <Box mt={2}>
+                      {tool.strengths.length > 0 && (
+                        <Box mb={1}>
+                          <Typography variant="body2" color="success.main" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
+                            <strong>💪 Strengths:</strong> {(() => {
+                              // Intelligent summarization of strengths
+                              const topStrengths = tool.strengths.slice(0, 3);
+                              if (topStrengths.length <= 2) return topStrengths.join(' and ');
+                              return topStrengths.slice(0, 2).join(', ') + ', and ' + topStrengths[2];
+                            })()}
+                          </Typography>
                         </Box>
-                      </Box>
-                    )}
+                      )}
+                      {tool.weaknesses.length > 0 && (
+                        <Box>
+                          <Typography variant="body2" color="error.main" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
+                            <strong>⚠️ Areas for improvement:</strong> {(() => {
+                              // Intelligent summarization of weaknesses
+                              const topWeaknesses = tool.weaknesses.slice(0, 3);
+                              if (topWeaknesses.length <= 2) return topWeaknesses.join(' and ');
+                              return topWeaknesses.slice(0, 2).join(', ') + ', and ' + topWeaknesses[2];
+                            })()}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+
+                    {/* Tag Summary */}
+                    {(() => {
+                      const tagSummary = getToolTagSummary(tool);
+                      const hasRelevantTags = filterBy === 'tag' && selectedTagType !== 'all' && 
+                                            tagSummary[selectedTagType] && tagSummary[selectedTagType].length > 0;
+                      
+                      if (hasRelevantTags) {
+                        return (
+                          <Box mt={2}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              🏷️ {TAG_TYPES[selectedTagType]}:
+                            </Typography>
+                            <Box display="flex" flexWrap="wrap" gap={0.5}>
+                              {tagSummary[selectedTagType].map(tag => (
+                                <Chip
+                                  key={tag}
+                                  label={tag}
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                       Last activity: {tool.recentActivity}
@@ -397,147 +560,191 @@ export const ToolPerformancePage: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          {/* Performance Matrix */}
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>AI Tool</strong></TableCell>
-                  <TableCell><strong>Sample Prompt Uses</strong></TableCell>
-                  <TableCell align="center"><strong>Overall Rating</strong></TableCell>
-                  <TableCell align="center"><strong>Total Reviews</strong></TableCell>
-                  <TableCell align="center"><strong>Prompts Tested</strong></TableCell>
-                  <TableCell align="center"><strong>Categories</strong></TableCell>
-                  <TableCell align="center"><strong>Performance</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredStats.map((tool) => (
-                  <TableRow key={tool.toolName} hover>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-                          {tool.toolName.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {tool.toolName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {tool.recentActivity}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ maxWidth: 300 }}>
-                        {tool.samplePrompts.length > 0 ? (
-                          tool.samplePrompts.slice(0, 2).map((sample, index) => (
-                            <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                              <Typography variant="caption" color="primary.main" fontWeight="bold" sx={{ fontSize: '0.7rem' }}>
-                                ⭐ {sample.rating.toFixed(1)}
-                              </Typography>
-                              <Typography variant="body2" sx={{ fontSize: '0.8rem', fontStyle: 'italic' }}>
-                                {sample.summary}
+          {/* Performance by Tag Type */}
+          <Box mb={1}>
+            <Typography variant="h5" gutterBottom sx={{ mb: 0.5 }}>
+              🏷️ Performance Analysis by Tag Type
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={1}>
+              See how each AI tool performs across different task characteristics and prompt types.
+            </Typography>
+          </Box>
+
+          <Grid container spacing={1}>
+            {Object.entries(TAG_TYPES).filter(([key]) => key !== 'all').map(([tagType, tagLabel]) => (
+              <Grid key={tagType} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                <Card variant="outlined" sx={{ height: '100%' }}>
+                  <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
+                      {tagLabel}
+                    </Typography>
+                    
+                    {filteredStats.map(tool => {
+                      const tagSummary = getToolTagSummary(tool);
+                      const tagValues = tagSummary[tagType] || [];
+                      
+                      if (tagValues.length === 0) return null;
+                      
+                      // Calculate performance for each tag value
+                      const tagPerformance = tagValues.map(tagValue => {
+                        const relevantPrompts = tool.prompts.filter(prompt => 
+                          prompt.tags && prompt.tags.includes(tagValue)
+                        );
+                        
+                        const reviews = relevantPrompts.flatMap(prompt => 
+                          prompt.reviews?.filter(review => review.toolUsed === tool.toolName) || []
+                        );
+                        
+                        const avgRating = reviews.length > 0 
+                          ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length 
+                          : 0;
+                          
+                        const promptCount = relevantPrompts.length;
+                        
+                        // Get all prompts for this tag
+                        const allPrompts = relevantPrompts.map(p => p.prompt || p.title || 'No prompt available');
+                        
+                        return {
+                          tagValue,
+                          rating: avgRating,
+                          promptCount,
+                          reviewCount: reviews.length,
+                          allPrompts: allPrompts
+                        };
+                      }).filter(perf => perf.reviewCount > 0);
+                      
+                      if (tagPerformance.length === 0) return null;
+                      
+                      return (
+                        <Box key={tool.toolName} mb={1} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+                          <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Avatar sx={{ bgcolor: 'primary.main', width: 24, height: 24, fontSize: '0.8rem' }}>
+                                {tool.toolName.charAt(0)}
+                              </Avatar>
+                              <Typography variant="body2" fontWeight="bold">
+                                {tool.toolName}
                               </Typography>
                             </Box>
-                          ))
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            No reviewed prompts
-                          </Typography>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box>
-                        <Rating value={tool.averageRating} readOnly precision={0.1} size="small" />
-                        <Typography variant="body2" color="text.secondary">
-                          {tool.averageRating.toFixed(1)}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="h6" color="primary.main">
-                        {tool.totalReviews}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2">
-                        {tool.promptsUsed}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Typography variant="body2">
-                        {tool.categories.length}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <LinearProgress
-                        variant="determinate"
-                        value={(tool.averageRating / 5) * 100}
-                        color={getRatingColor(tool.averageRating) as any}
-                        sx={{ width: '100px', mx: 'auto' }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </TabPanel>
+                          </Box>
+                          
+                          {tagPerformance.map((perf, index) => {
+                            // Get weaknesses for this specific tag
+                            const relevantPrompts = tool.prompts.filter(prompt => 
+                              prompt.tags && prompt.tags.includes(perf.tagValue)
+                            );
+                            const reviews = relevantPrompts.flatMap(prompt => 
+                              prompt.reviews?.filter(review => review.toolUsed === tool.toolName) || []
+                            );
+                            
+                            const weaknesses = Array.from(new Set(reviews
+                              .filter(r => r.whatDidntWork)
+                              .flatMap(r => r.whatDidntWork?.split(',').map(s => s.trim()).filter(s => s) || [])
+                            )).slice(0, 3);
 
-        <TabPanel value={tabValue} index={2}>
-          {/* Tool Comparison */}
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>Coming Soon:</strong> Side-by-side tool comparison with detailed metrics, 
-            performance breakdowns by category, and recommended use cases.
-          </Alert>
-
-          <Grid container spacing={3}>
-            {filteredStats.slice(0, 6).map((tool) => (
-              <Grid key={tool.toolName} size={{ xs: 12, md: 6 }}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {tool.toolName}
-                    </Typography>
-                    
-                    <Box display="flex" justifyContent="space-between" mb={2}>
-                      <Typography variant="body2">Overall Score:</Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {tool.averageRating.toFixed(1)}/5.0
-                      </Typography>
-                    </Box>
-
-                    <Typography variant="subtitle2" gutterBottom>
-                      Category Performance:
-                    </Typography>
-                    
-                    {tool.topPerformance.slice(0, 3).map(perf => (
-                      <Box key={perf.category} mb={1}>
-                        <Box display="flex" justifyContent="space-between" mb={0.5}>
-                          <Typography variant="body2">
-                            {perf.category}
-                          </Typography>
-                          <Typography variant="body2">
-                            {perf.rating.toFixed(1)} ({perf.reviewCount} reviews)
-                          </Typography>
+                            return (
+                              <Box key={perf.tagValue} mb={1}>
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                                  <Chip 
+                                    label={perf.tagValue} 
+                                    size="small" 
+                                    color="info" 
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                                  />
+                                  <Box display="flex" alignItems="center" gap={0.5}>
+                                    <Rating value={perf.rating} readOnly precision={0.1} size="small" sx={{ fontSize: '1rem' }} />
+                                    <Typography variant="body2" fontWeight="bold" fontSize="0.85rem">
+                                      {perf.rating.toFixed(1)}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                                
+                                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                                  {perf.promptCount} prompts • {perf.reviewCount} reviews
+                                </Typography>
+                                
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={(perf.rating / 5) * 100}
+                                  color={getRatingColor(perf.rating) as any}
+                                  sx={{ mb: 0.5, height: 3, borderRadius: 1 }}
+                                />
+                                
+                                {/* Expandable Prompt Details */}
+                                <Box sx={{ bgcolor: 'grey.50', borderRadius: 1, overflow: 'hidden' }}>
+                                  <Box 
+                                    sx={{ 
+                                      p: 0.5, 
+                                      cursor: 'pointer',
+                                      '&:hover': { bgcolor: 'grey.100' }
+                                    }}
+                                    onClick={() => {
+                                      const element = document.getElementById(`prompt-details-${tool.toolName}-${perf.tagValue}-${index}`);
+                                      if (element) {
+                                        element.style.display = element.style.display === 'none' ? 'block' : 'none';
+                                      }
+                                    }}
+                                  >
+                                    <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.65rem' }}>
+                                      📝 View {perf.promptCount > 1 ? `${perf.promptCount} Prompts` : 'Prompt'} + Weaknesses
+                                    </Typography>
+                                  </Box>
+                                  
+                                  <Box 
+                                    id={`prompt-details-${tool.toolName}-${perf.tagValue}-${index}`}
+                                    sx={{ display: 'none', p: 0.5, borderTop: '1px solid', borderColor: 'divider' }}
+                                  >
+                                    <Box sx={{ 
+                                      fontSize: '0.7rem',
+                                      color: 'text.primary',
+                                      mb: 0.5,
+                                      p: 0.5,
+                                      bgcolor: 'background.paper',
+                                      borderRadius: 0.5,
+                                      border: '1px solid',
+                                      borderColor: 'divider',
+                                      maxHeight: '200px',
+                                      overflow: 'auto'
+                                    }}>
+                                      {perf.allPrompts.length === 1 ? (
+                                        <Typography variant="body2" sx={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap' }}>
+                                          {perf.allPrompts[0]}
+                                        </Typography>
+                                      ) : (
+                                        perf.allPrompts.map((prompt, promptIndex) => (
+                                          <Box key={promptIndex} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                                            <Typography variant="body2" sx={{ fontSize: '0.7rem', minWidth: 'auto' }}>
+                                              •
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap', flex: 1 }}>
+                                              {prompt}
+                                            </Typography>
+                                          </Box>
+                                        ))
+                                      )}
+                                    </Box>
+                                    
+                                    {weaknesses.length > 0 && (
+                                      <Typography variant="caption" display="block" color="error.main" sx={{ fontSize: '0.65rem' }}>
+                                        ❌ Key Issues: {weaknesses.join(' • ')}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Box>
+                              </Box>
+                            );
+                          })}
                         </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={(perf.rating / 5) * 100}
-                          color={getRatingColor(perf.rating) as any}
-                          sx={{ height: 6, borderRadius: 1 }}
-                        />
-                      </Box>
-                    ))}
+                      );
+                    }).filter(Boolean)}
                   </CardContent>
                 </Card>
               </Grid>
             ))}
           </Grid>
         </TabPanel>
+
       </Paper>
 
       {/* Quick Actions */}

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "e00b0812-583f-4dc1-811d-2e6779cd314b",
+    "email": "test@example.com",
+    "name": "Test User",
+    "password": "$2b$10$InA1BzqsSUogU02tg7hl3uS8pjp4eSGZd2fqPGiMOQUof8xLGu79a",
+    "avatar": "https://ui-avatars.com/api/?name=Test%20User&background=1976d2&color=fff",
+    "createdAt": "2026-01-03T10:10:30.136Z",
+    "updatedAt": "2026-01-03T10:10:30.136Z"
+  },
+  {
+    "id": "b1101b80-875b-41ee-8ae3-c4ed84e4afac",
+    "email": "anvita.dekhane@uipath.com",
+    "name": "Anvita",
+    "password": "$2b$10$fttlTVprPIN5R/DMbt3ca.ROwgbWSIEG9efVXHu8T/Wv2Ir50dObu",
+    "avatar": "https://ui-avatars.com/api/?name=Anvita&background=1976d2&color=fff",
+    "createdAt": "2026-01-08T21:45:12.801Z",
+    "updatedAt": "2026-01-08T21:45:12.801Z"
+  },
+  {
+    "id": "7396a864-6edd-4da0-8979-887c1641aecc",
+    "email": "anvitaiitb@gmail.com",
+    "name": "Anvita Dekhane",
+    "password": "$2a$10$umJ.qzIx9j7TcqmLSy6nWev8stc5dhL8Y5wcHAZAT.gfDm5uiDK52",
+    "avatar": "https://ui-avatars.com/api/?name=Anvita%20Dekhane&background=1976d2&color=fff",
+    "role": "admin",
+    "createdAt": "2026-01-20T23:24:01.577Z",
+    "updatedAt": "2026-02-06T00:49:34.930Z"
+  }
+]

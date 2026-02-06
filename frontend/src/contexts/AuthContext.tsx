@@ -54,14 +54,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Attempting to sign in with:', { email });
       const response = await authApi.signIn({ email, password });
+      console.log('Sign in response received:', response);
       
       localStorage.setItem('authToken', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       setUser(response.data.user);
     } catch (error: any) {
       console.error('Sign in error:', error);
-      throw new Error(error.response?.data?.error || 'Failed to sign in');
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
+      console.error('Error config:', error.config);
+      throw new Error(error.response?.data?.error || error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
     }

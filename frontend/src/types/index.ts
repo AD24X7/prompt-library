@@ -26,6 +26,7 @@ export interface Review {
   createdAt: string;
   updatedAt: string;
   toolUsed: string; // Required now
+  department?: string; // Department information
   promptEdits?: string; // New field for prompt modifications
   whatWorked?: string;
   whatDidntWork?: string;
@@ -64,6 +65,7 @@ export interface User {
   email: string;
   name: string;
   avatar: string;
+  role: 'admin' | 'user';
   createdAt: string;
   updatedAt: string;
 }

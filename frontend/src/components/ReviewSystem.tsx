@@ -49,6 +49,11 @@ interface ToolGroup {
 }
 
 const COMMON_TOOLS = [
+  'Delegate',
+  'Cowork',
+  'Vy',
+  'MiniMax',
+  'Manus',
   'ChatGPT (GPT-4)',
   'ChatGPT (GPT-3.5)',
   'Claude (Sonnet)',

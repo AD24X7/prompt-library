@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { Prompt, Category, Stats, Review, User, Comment } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005/api';
+console.log('API_BASE_URL configured as:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
