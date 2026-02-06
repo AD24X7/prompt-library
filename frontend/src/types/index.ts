@@ -21,6 +21,8 @@ export interface Prompt {
 
 export interface Review {
   id: string;
+  userId?: string; // ID of the user who created the review
+  userEmail?: string; // Email of the user who created the review
   rating: number;
   comment: string;
   createdAt: string;

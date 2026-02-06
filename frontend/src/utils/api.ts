@@ -75,10 +75,20 @@ export const promptsApi = {
     api.post<{ data: Review }>(`/prompts/${id}/review`, review),
 };
 
+export const reviewsApi = {
+  update: (reviewId: string, reviewData: Partial<Review>) =>
+    api.put<{ data: Review }>(`/reviews/${reviewId}`, reviewData),
+  
+  delete: (reviewId: string) =>
+    api.delete(`/reviews/${reviewId}`),
+};
+
 export const categoriesApi = {
   getAll: () => api.get<{ data: Category[] }>('/categories'),
   create: (category: { name: string; description?: string }) =>
     api.post<{ data: Category }>('/categories', category),
+  delete: (id: string) =>
+    api.delete(`/categories/${id}`),
 };
 
 export const statsApi = {

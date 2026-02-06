@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { promptsApi, categoriesApi } from '../utils/api';
 import { Category } from '../types';
 import { extractPlaceholders, validatePromptText } from '../utils/promptUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FormData {
   title: string;
@@ -38,6 +39,7 @@ interface FormData {
 
 export const CreatePromptPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -210,6 +212,20 @@ export const CreatePromptPage: React.FC = () => {
     '15-30 minutes',
     '30+ minutes',
   ];
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>
+          Create New Prompt
+        </Typography>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Please sign in to create new prompts.
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>

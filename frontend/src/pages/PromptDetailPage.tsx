@@ -99,8 +99,8 @@ export const PromptDetailPage: React.FC = () => {
   const fetchPrompt = async (promptId: string, retryCount = 0) => {
     try {
       const response = await promptsApi.getById(promptId);
-      setPrompt((response.data || response) as unknown as Prompt);
-      const promptData = (response.data || response) as unknown as Prompt;
+      const promptData = (response.data?.data || response.data || response) as unknown as Prompt;
+      setPrompt(promptData);
       setCustomizedPrompt(promptData.prompt);
       setError(''); // Clear any previous errors
       
@@ -206,7 +206,7 @@ export const PromptDetailPage: React.FC = () => {
       setReviewDialogOpen(true);
     } else if (pendingAction === 'edit') {
       if (!prompt) return;
-      navigate(`/edit/${prompt.id}`);
+      navigate(`/prompts/${prompt.id}/edit`);
     }
     
     setPendingAction(null);
@@ -236,7 +236,7 @@ export const PromptDetailPage: React.FC = () => {
     requireAuth('edit', () => {
       if (!prompt) return;
       // Navigate to edit page (we'll create this)
-      navigate(`/edit/${prompt.id}`);
+      navigate(`/prompts/${prompt.id}/edit`);
     });
   };
 
@@ -339,16 +339,20 @@ export const PromptDetailPage: React.FC = () => {
               <StarIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Edit Prompt">
-            <IconButton onClick={handleEditPrompt}>
-              <EditIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton color="error" onClick={handleDeletePrompt}>
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
+          {user && (
+            <Tooltip title="Edit Prompt">
+              <IconButton onClick={handleEditPrompt}>
+                <EditIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {user && user.email === 'anvitaiitb@gmail.com' && (
+            <Tooltip title="Delete">
+              <IconButton color="error" onClick={handleDeletePrompt}>
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       </Box>
 
@@ -507,7 +511,7 @@ export const PromptDetailPage: React.FC = () => {
             <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
               <StarIcon fontSize="small" />
               <Typography variant="body2">
-                {prompt.rating.toFixed(1)} ({prompt.reviews?.length || 0} reviews)
+                {prompt.rating ? prompt.rating.toFixed(1) : 'No rating'} ({prompt.reviews?.length || 0} reviews)
               </Typography>
             </Box>
 
