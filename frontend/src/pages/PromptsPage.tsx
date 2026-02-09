@@ -106,15 +106,15 @@ export const PromptsPage: React.FC = () => {
     return availableTagsByType;
   };
 
-  const getAllTags = () => {
-    const allTags = new Set<string>();
-    prompts.forEach(prompt => {
-      if (prompt.tags) {
-        prompt.tags.forEach(tag => allTags.add(tag));
-      }
-    });
-    return Array.from(allTags).sort();
-  };
+  // const getAllTags = () => {
+  //   const allTags = new Set<string>();
+  //   prompts.forEach(prompt => {
+  //     if (prompt.tags) {
+  //       prompt.tags.forEach(tag => allTags.add(tag));
+  //     }
+  //   });
+  //   return Array.from(allTags).sort();
+  // };
 
   const getDepartments = () => {
     const departments = new Set<string>();
